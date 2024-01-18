@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.5.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/hashicorp/go-hclog v0.0.0-20180709165350-ff2cf002a8dd
+	github.com/hashicorp/go-hclog v1.6.2
 	github.com/hashicorp/go-plugin v1.2.2
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/magefile/mage v1.11.0
@@ -19,9 +19,8 @@ require (
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/prometheus/client_golang v1.9.0
 	github.com/prometheus/common v0.15.0
-	github.com/stretchr/testify v1.7.0
-	golang.org/x/sys v0.0.0-20201214210602-f9fddec55a1e
+	github.com/stretchr/testify v1.7.2
+	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6
 	google.golang.org/grpc v1.35.0
 	google.golang.org/protobuf v1.25.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
