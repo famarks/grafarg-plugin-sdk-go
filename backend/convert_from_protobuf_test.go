@@ -2,16 +2,14 @@ package backend
 
 import (
 	"encoding/json"
-	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 	"github.com/mitchellh/reflectwalk"
 	"github.com/stretchr/testify/require"
-
-	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 )
 
 type walker struct {
@@ -19,7 +17,7 @@ type walker struct {
 	ZeroValueFieldCount int64
 }
 
-func (w *walker) Struct(_ reflect.Value) error {
+func (w *walker) Struct(v reflect.Value) error {
 	return nil
 }
 
@@ -100,7 +98,7 @@ func TestConvertFromProtobufUser(t *testing.T) {
 }
 
 var lastUpdatedMS int64 = 86400 * 2 * 1000
-var lastUpdatedTime = time.Unix(0, 86400*2*1e9)
+var lastUpdatedTime time.Time = time.Unix(0, 86400*2*1e9)
 
 var protoAppInstanceSettings = &pluginv2.AppInstanceSettings{
 	JsonData:                []byte(`{ "foo": "gpp"`),
@@ -163,7 +161,7 @@ func TestConvertFromProtobufDataSourceInstanceSettings(t *testing.T) {
 		t.Fatalf(unsetErrFmt, "proto", "DataSourceInstanceSettings", protoWalker.ZeroValueFieldCount, protoWalker.FieldCount)
 	}
 
-	sdkDSIS := f.DataSourceInstanceSettings(protoDSIS, "example-datasource")
+	sdkDSIS := f.DataSourceInstanceSettings(protoDSIS)
 
 	sdkWalker := &walker{}
 	err = reflectwalk.Walk(sdkDSIS, sdkWalker)
@@ -173,13 +171,12 @@ func TestConvertFromProtobufDataSourceInstanceSettings(t *testing.T) {
 		t.Fatalf(unsetErrFmt, "sdk", "DataSourceInstanceSettings", sdkWalker.ZeroValueFieldCount, sdkWalker.FieldCount)
 	}
 
-	require.Equal(t, protoWalker.FieldCount+datasourceInstanceProtoFieldCountDelta(), sdkWalker.FieldCount)
+	require.Equal(t, protoWalker.FieldCount, sdkWalker.FieldCount)
 
 	requireCounter := &requireCounter{}
 
 	requireCounter.Equal(t, protoDSIS.Id, sdkDSIS.ID)
 	requireCounter.Equal(t, protoDSIS.Uid, sdkDSIS.UID)
-	requireCounter.Equal(t, "example-datasource", sdkDSIS.Type)
 	requireCounter.Equal(t, protoDSIS.Name, sdkDSIS.Name)
 	requireCounter.Equal(t, protoDSIS.Url, sdkDSIS.URL)
 	requireCounter.Equal(t, protoDSIS.User, sdkDSIS.User)
@@ -194,9 +191,8 @@ func TestConvertFromProtobufDataSourceInstanceSettings(t *testing.T) {
 }
 
 var protoPluginContext = &pluginv2.PluginContext{
-	OrgId:         3,
-	PluginId:      "the-best-plugin",
-	PluginVersion: "1.0.0",
+	OrgId:    3,
+	PluginId: "the-best-plugin",
 	User: &pluginv2.User{
 		Login: "bestUser",
 		Name:  "Best User",
@@ -205,10 +201,6 @@ var protoPluginContext = &pluginv2.PluginContext{
 	},
 	AppInstanceSettings:        protoAppInstanceSettings,
 	DataSourceInstanceSettings: protoDataSourceInstanceSettings,
-	GrafargConfig: map[string]string{
-		"foo": "bar",
-	},
-	UserAgent: "Grafarg/10.0.0 (linux; amd64)",
 }
 
 func TestConvertFromProtobufPluginContext(t *testing.T) {
@@ -231,7 +223,7 @@ func TestConvertFromProtobufPluginContext(t *testing.T) {
 		t.Fatalf(unsetErrFmt, "sdk", "DataSourceInstanceSettings", sdkWalker.ZeroValueFieldCount, sdkWalker.FieldCount)
 	}
 
-	require.Equal(t, protoWalker.FieldCount+datasourceInstanceProtoFieldCountDelta(), sdkWalker.FieldCount)
+	require.Equal(t, protoWalker.FieldCount, sdkWalker.FieldCount)
 
 	requireCounter := &requireCounter{}
 
@@ -253,8 +245,6 @@ func TestConvertFromProtobufPluginContext(t *testing.T) {
 	requireCounter.Equal(t, protoCtx.DataSourceInstanceSettings.Name, sdkCtx.DataSourceInstanceSettings.Name)
 	requireCounter.Equal(t, protoCtx.DataSourceInstanceSettings.Id, sdkCtx.DataSourceInstanceSettings.ID)
 	requireCounter.Equal(t, protoCtx.DataSourceInstanceSettings.Uid, sdkCtx.DataSourceInstanceSettings.UID)
-	requireCounter.Equal(t, protoCtx.PluginId, sdkCtx.DataSourceInstanceSettings.Type)
-	requireCounter.Equal(t, protoCtx.PluginVersion, sdkCtx.PluginVersion)
 	requireCounter.Equal(t, protoCtx.DataSourceInstanceSettings.Url, sdkCtx.DataSourceInstanceSettings.URL)
 	requireCounter.Equal(t, protoCtx.DataSourceInstanceSettings.User, sdkCtx.DataSourceInstanceSettings.User)
 	requireCounter.Equal(t, protoCtx.DataSourceInstanceSettings.Database, sdkCtx.DataSourceInstanceSettings.Database)
@@ -263,9 +253,6 @@ func TestConvertFromProtobufPluginContext(t *testing.T) {
 	requireCounter.Equal(t, json.RawMessage(protoCtx.DataSourceInstanceSettings.JsonData), sdkCtx.DataSourceInstanceSettings.JSONData)
 	requireCounter.Equal(t, map[string]string{"secret": "quiet"}, sdkCtx.DataSourceInstanceSettings.DecryptedSecureJSONData)
 	requireCounter.Equal(t, time.Unix(0, 86400*2*1e9), sdkCtx.DataSourceInstanceSettings.Updated)
-	requireCounter.Equal(t, protoCtx.UserAgent, sdkCtx.UserAgent.String())
-
-	requireCounter.Equal(t, protoCtx.GrafargConfig, sdkCtx.GrafargConfig.config)
 
 	require.Equal(t, requireCounter.Count, sdkWalker.FieldCount-3, "untested fields in conversion") // -3 Struct Fields
 }
@@ -387,7 +374,7 @@ func TestConvertFromProtobufQueryDataRequest(t *testing.T) {
 		t.Fatalf(unsetErrFmt, "sdk", "QueryDataRequest", sdkWalker.ZeroValueFieldCount, sdkWalker.FieldCount)
 	}
 
-	require.Equal(t, protoWalker.FieldCount+datasourceInstanceProtoFieldCountDelta(), sdkWalker.FieldCount)
+	require.Equal(t, protoWalker.FieldCount, sdkWalker.FieldCount)
 
 	requireCounter := &requireCounter{}
 
@@ -411,8 +398,6 @@ func TestConvertFromProtobufQueryDataRequest(t *testing.T) {
 	requireCounter.Equal(t, protoQDR.PluginContext.DataSourceInstanceSettings.Name, sdkQDR.PluginContext.DataSourceInstanceSettings.Name)
 	requireCounter.Equal(t, protoQDR.PluginContext.DataSourceInstanceSettings.Id, sdkQDR.PluginContext.DataSourceInstanceSettings.ID)
 	requireCounter.Equal(t, protoQDR.PluginContext.DataSourceInstanceSettings.Uid, sdkQDR.PluginContext.DataSourceInstanceSettings.UID)
-	requireCounter.Equal(t, protoQDR.PluginContext.PluginId, sdkQDR.PluginContext.DataSourceInstanceSettings.Type)
-	requireCounter.Equal(t, protoQDR.PluginContext.PluginVersion, sdkQDR.PluginContext.PluginVersion)
 	requireCounter.Equal(t, protoQDR.PluginContext.DataSourceInstanceSettings.Url, sdkQDR.PluginContext.DataSourceInstanceSettings.URL)
 	requireCounter.Equal(t, protoQDR.PluginContext.DataSourceInstanceSettings.User, sdkQDR.PluginContext.DataSourceInstanceSettings.User)
 	requireCounter.Equal(t, protoQDR.PluginContext.DataSourceInstanceSettings.Database, sdkQDR.PluginContext.DataSourceInstanceSettings.Database)
@@ -421,7 +406,6 @@ func TestConvertFromProtobufQueryDataRequest(t *testing.T) {
 	requireCounter.Equal(t, json.RawMessage(protoQDR.PluginContext.DataSourceInstanceSettings.JsonData), sdkQDR.PluginContext.DataSourceInstanceSettings.JSONData)
 	requireCounter.Equal(t, map[string]string{"secret": "quiet"}, sdkQDR.PluginContext.DataSourceInstanceSettings.DecryptedSecureJSONData)
 	requireCounter.Equal(t, time.Unix(0, 86400*2*1e9), sdkQDR.PluginContext.DataSourceInstanceSettings.Updated)
-	requireCounter.Equal(t, protoQDR.PluginContext.UserAgent, sdkQDR.PluginContext.UserAgent.String())
 
 	// Queries
 	requireCounter.Equal(t, protoQDR.Queries[0].RefId, sdkQDR.Queries[0].RefID)
@@ -432,93 +416,10 @@ func TestConvertFromProtobufQueryDataRequest(t *testing.T) {
 	requireCounter.Equal(t, sdkTimeRange.To, sdkQDR.Queries[0].TimeRange.To)
 	requireCounter.Equal(t, json.RawMessage(protoQDR.Queries[0].Json), sdkQDR.Queries[0].JSON)
 
-	// -7 is:
+	// -6 is:
 	// PluginContext, .User, .AppInstanceSettings, .DataSourceInstanceSettings
-	// DataQuery, .TimeRange, .GrafargConfig
+	// DataQuery, .TimeRange
 	//
 	//
-	require.Equal(t, requireCounter.Count, sdkWalker.FieldCount-7, "untested fields in conversion") // -6 Struct Fields
-}
-
-func TestConvertFromProtobufCheckHealthRequest(t *testing.T) {
-	t.Run("Should convert provided headers", func(t *testing.T) {
-		protoReq := &pluginv2.CheckHealthRequest{
-			PluginContext: protoPluginContext,
-			Headers: map[string]string{
-				"foo": "fooVal",
-				"bar": "barVal",
-			},
-		}
-
-		req := FromProto().CheckHealthRequest(protoReq)
-		require.NotNil(t, req)
-		require.NotNil(t, req.PluginContext)
-		require.Equal(t, protoPluginContext.OrgId, req.PluginContext.OrgID)
-		require.Equal(t, protoReq.Headers, req.Headers)
-	})
-
-	t.Run("Should handle nil-provided headers", func(t *testing.T) {
-		protoReq := &pluginv2.CheckHealthRequest{
-			PluginContext: protoPluginContext,
-		}
-
-		req := FromProto().CheckHealthRequest(protoReq)
-		require.NotNil(t, req)
-		require.Equal(t, map[string]string{}, req.Headers)
-	})
-}
-
-func TestConvertFromProtobufDataResponse(t *testing.T) {
-	t.Run("Should convert data query response", func(t *testing.T) {
-		tcs := []struct {
-			rsp                 *pluginv2.DataResponse
-			expectedStatus      Status
-			expectedErrorSource ErrorSource
-		}{
-			{
-				rsp: &pluginv2.DataResponse{
-					Status: http.StatusOK,
-				},
-				expectedStatus: StatusOK,
-			}, {
-				rsp: &pluginv2.DataResponse{
-					Status: http.StatusFailedDependency,
-				},
-				expectedStatus: Status(424),
-			}, {
-				rsp: &pluginv2.DataResponse{
-					Status: http.StatusInternalServerError,
-					Error:  "foo",
-				},
-				expectedStatus: Status(500),
-			},
-			{
-				rsp: &pluginv2.DataResponse{
-					Status:      http.StatusInternalServerError,
-					Error:       "foo",
-					ErrorSource: string(ErrorSourceDownstream),
-				},
-				expectedStatus:      Status(500),
-				expectedErrorSource: ErrorSourceDownstream,
-			},
-		}
-
-		for _, tc := range tcs {
-			rsp, err := FromProto().QueryDataResponse(&pluginv2.QueryDataResponse{
-				Responses: map[string]*pluginv2.DataResponse{
-					"A": tc.rsp,
-				},
-			})
-			require.NoError(t, err)
-			require.NotNil(t, rsp)
-			require.Equal(t, tc.expectedStatus, rsp.Responses["A"].Status)
-			require.Equal(t, tc.expectedErrorSource, rsp.Responses["A"].ErrorSource)
-		}
-	})
-}
-
-// datasourceInstanceProtoFieldCountDelta returns the extra number of SDK fields that do not exist in the protobuf.
-func datasourceInstanceProtoFieldCountDelta() int64 {
-	// returning 1 to account for the Type field in the SDK that is not in the protobuf
-	return int64(1)
+	require.Equal(t, requireCounter.Count, sdkWalker.FieldCount-6, "untested fields in conversion") // -6 Struct Fields
 }

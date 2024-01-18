@@ -1,10 +1,8 @@
 package backend
 
 import (
-	"errors"
 	"time"
 
-	"github.com/famarks/grafarg-plugin-sdk-go/backend/useragent"
 	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 )
 
@@ -69,26 +67,14 @@ func (t ConvertToProtobuf) DataSourceInstanceSettings(s *DataSourceInstanceSetti
 	}
 }
 
-// UserAgent converts the SDK version of a useragent.UserAgent to the protobuf version.
-func (t ConvertToProtobuf) UserAgent(ua *useragent.UserAgent) string {
-	if ua == nil {
-		return ""
-	}
-
-	return ua.String()
-}
-
 // PluginContext converts the SDK version of a PluginContext to the protobuf version.
 func (t ConvertToProtobuf) PluginContext(pluginCtx PluginContext) *pluginv2.PluginContext {
 	return &pluginv2.PluginContext{
 		OrgId:                      pluginCtx.OrgID,
 		PluginId:                   pluginCtx.PluginID,
-		PluginVersion:              pluginCtx.PluginVersion,
 		User:                       t.User(pluginCtx.User),
 		AppInstanceSettings:        t.AppInstanceSettings(pluginCtx.AppInstanceSettings),
 		DataSourceInstanceSettings: t.DataSourceInstanceSettings(pluginCtx.DataSourceInstanceSettings),
-		GrafargConfig:              t.GrafargConfig(pluginCtx.GrafargConfig),
-		UserAgent:                  t.UserAgent(pluginCtx.UserAgent),
 	}
 }
 
@@ -156,9 +142,6 @@ func (t ConvertToProtobuf) QueryDataResponse(res *QueryDataResponse) (*pluginv2.
 	}
 	for refID, dr := range res.Responses {
 		for _, f := range dr.Frames {
-			if f == nil {
-				return nil, errors.New("frame can not be nil")
-			}
 			if f.RefID == "" {
 				f.RefID = refID
 			}
@@ -170,20 +153,9 @@ func (t ConvertToProtobuf) QueryDataResponse(res *QueryDataResponse) (*pluginv2.
 		pDR := pluginv2.DataResponse{
 			Frames: encodedFrames,
 		}
-		status := dr.Status
 		if dr.Error != nil {
 			pDR.Error = dr.Error.Error()
-			if !status.IsValid() {
-				status = statusFromError(dr.Error)
-			}
 		}
-		if status.IsValid() {
-			pDR.Status = int32(status)
-		} else if status == 0 {
-			pDR.Status = int32(StatusOK)
-		}
-		pDR.ErrorSource = string(dr.ErrorSource)
-
 		pQDR.Responses[refID] = &pDR
 	}
 
@@ -222,83 +194,4 @@ func (t ConvertToProtobuf) CallResourceRequest(req *CallResourceRequest) *plugin
 		protoReq.Headers[k] = &pluginv2.StringList{Values: values}
 	}
 	return protoReq
-}
-
-// RunStreamRequest ...
-func (t ConvertToProtobuf) RunStreamRequest(req *RunStreamRequest) *pluginv2.RunStreamRequest {
-	protoReq := &pluginv2.RunStreamRequest{
-		PluginContext: t.PluginContext(req.PluginContext),
-		Path:          req.Path,
-		Data:          req.Data,
-	}
-	return protoReq
-}
-
-// SubscribeStreamRequest ...
-func (t ConvertToProtobuf) SubscribeStreamRequest(req *SubscribeStreamRequest) *pluginv2.SubscribeStreamRequest {
-	return &pluginv2.SubscribeStreamRequest{
-		PluginContext: t.PluginContext(req.PluginContext),
-		Path:          req.Path,
-		Data:          req.Data,
-	}
-}
-
-// SubscribeStreamResponse ...
-func (t ConvertToProtobuf) SubscribeStreamResponse(req *SubscribeStreamResponse) *pluginv2.SubscribeStreamResponse {
-	resp := &pluginv2.SubscribeStreamResponse{
-		Status: pluginv2.SubscribeStreamResponse_Status(req.Status),
-	}
-	if req.InitialData != nil {
-		resp.Data = req.InitialData.data
-	}
-	return resp
-}
-
-// PublishStreamRequest ...
-func (t ConvertToProtobuf) PublishStreamRequest(req *PublishStreamRequest) *pluginv2.PublishStreamRequest {
-	return &pluginv2.PublishStreamRequest{
-		PluginContext: t.PluginContext(req.PluginContext),
-		Path:          req.Path,
-		Data:          req.Data,
-	}
-}
-
-// PublishStreamResponse ...
-func (t ConvertToProtobuf) PublishStreamResponse(req *PublishStreamResponse) *pluginv2.PublishStreamResponse {
-	return &pluginv2.PublishStreamResponse{
-		Status: pluginv2.PublishStreamResponse_Status(req.Status),
-		Data:   req.Data,
-	}
-}
-
-// StreamPacket ...
-func (t ConvertToProtobuf) StreamPacket(p *StreamPacket) *pluginv2.StreamPacket {
-	protoReq := &pluginv2.StreamPacket{
-		Data: p.Data,
-	}
-	return protoReq
-}
-
-// CollectMetricsRequest converts the SDK version of a CollectMetricsRequest to the protobuf version.
-func (t ConvertToProtobuf) CollectMetricsRequest(req *CollectMetricsRequest) *pluginv2.CollectMetricsRequest {
-	return &pluginv2.CollectMetricsRequest{
-		PluginContext: t.PluginContext(req.PluginContext),
-	}
-}
-
-// CollectMetricsResult converts the SDK version of a CollectMetricsResult to the protobuf version.
-func (t ConvertToProtobuf) CollectMetricsResult(res *CollectMetricsResult) *pluginv2.CollectMetricsResponse {
-	return &pluginv2.CollectMetricsResponse{
-		Metrics: &pluginv2.CollectMetricsResponse_Payload{
-			Prometheus: res.PrometheusMetrics,
-		},
-	}
-}
-
-// GrafargConfig converts the SDK version of a GrafargCfg to the protobuf version.
-func (t ConvertToProtobuf) GrafargConfig(cfg *GrafargCfg) map[string]string {
-	if cfg == nil {
-		return map[string]string{}
-	}
-	return cfg.config
 }

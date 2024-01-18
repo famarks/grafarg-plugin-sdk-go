@@ -1,5 +1,4 @@
-//go:build mage
-// +build mage
+//+build mage
 
 package main
 
@@ -31,28 +30,11 @@ func Test() error {
 	return sh.RunV("go", "test", "./...")
 }
 
-// TestRace runs the test suite with the data race detector enabled.
-func TestRace() error {
-	return sh.RunV("go", "test", "-race", "./...")
-}
-
 func Lint() error {
 	if err := sh.RunV("golangci-lint", "run", "./..."); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-// Drone signs the Drone configuration file
-// This needs to be run everytime the drone.yml file is modified
-// See https://github.com/famarks/deployment_tools/blob/master/docs/infrastructure/drone/signing.md for more info
-func Drone() error {
-	if err := sh.RunV("drone", "lint"); err != nil {
-		return err
-	}
-
-	if err := sh.RunV("drone", "--server", "https://drone.grafarg.net", "sign", "--save", "grafarg/grafarg-plugin-sdk-go"); err != nil {
+	if err := sh.RunV("revive", "-formatter", "stylish", "-config", "scripts/configs/revive.toml", "./..."); err != nil {
 		return err
 	}
 

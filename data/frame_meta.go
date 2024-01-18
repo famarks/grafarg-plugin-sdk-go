@@ -9,23 +9,14 @@ import (
 // https://github.com/famarks/grafarg/blob/master/packages/grafarg-data/src/types/data.ts#L11
 // NOTE -- in javascript this can accept any `[key: string]: any;` however
 // this interface only exposes the values we want to be exposed
-//
-//swagger:model
 type FrameMeta struct {
-	// Type asserts that the frame matches a known type structure.
-	Type FrameType `json:"type,omitempty"`
-
-	// TypeVersion is the version of the Type property. Versions greater than 0.0 correspond to the dataplane
-	// contract documentation https://grafarg.github.io/dataplane/contract/.
-	TypeVersion FrameTypeVersion `json:"typeVersion"`
-
-	// Path is a browsable path on the datasource.
+	// Path is a browsable path on the datasource
 	Path string `json:"path,omitempty"`
 
-	// PathSeparator defines the separator pattern to decode a hierarchy. The default separator is '/'.
+	// PathSeparator defines the separator pattern to decode a hiearchy. The default separator is '/'
 	PathSeparator string `json:"pathSeparator,omitempty"`
 
-	// Custom datasource specific values.
+	// Datasource specific values
 	Custom interface{} `json:"custom,omitempty"`
 
 	// Stats is an array of query result statistics.
@@ -35,26 +26,14 @@ type FrameMeta struct {
 	// Grafarg can display to the user in the user interface.
 	Notices []Notice `json:"notices,omitempty"`
 
-	// Channel is the path to a stream in grafarg live that has real-time updates for this data.
-	Channel string `json:"channel,omitempty"`
-
-	// PreferredVisualization is currently used to show results in Explore only in preferred visualisation option.
+	// PreferredVisualisationType is currently used to show results in Explore only in preferred visualisation option.
 	PreferredVisualization VisType `json:"preferredVisualisationType,omitempty"`
-
-	// PreferredVisualizationPluginId sets the panel plugin id to use to render the data when using Explore. If
-	// the plugin cannot be found will fall back to PreferredVisualization.
-	PreferredVisualizationPluginID string `json:"preferredVisualisationPluginId,omitempty"`
 
 	// ExecutedQueryString is the raw query sent to the underlying system. All macros and templating
 	// have been applied.  When metadata contains this value, it will be shown in the query inspector.
 	ExecutedQueryString string `json:"executedQueryString,omitempty"`
-
-	// Optionally identify which topic the frame should be assigned to.
-	// A value specified in the response will override what the request asked for.
-	DataTopic DataTopic `json:"dataTopic,omitempty"`
 }
 
-// Should be kept in sync with grafarg/packages/grafarg-data/src/types/data.ts#PreferredVisualisationType
 const (
 	// VisTypeGraph indicates the response should be visualized using a graph.
 	VisTypeGraph VisType = "graph"
@@ -64,30 +43,10 @@ const (
 
 	// VisTypeLogs indicates the response should be visualized using a logs visualization.
 	VisTypeLogs = "logs"
-
-	// VisTypeTrace indicates the response should be visualized using a trace view visualization.
-	VisTypeTrace = "trace"
-
-	// VisTypeNodeGraph indicates the response should be visualized using a node graph visualization.
-	VisTypeNodeGraph = "nodeGraph"
-
-	// VisTypeFlameGraph indicates the response should be visualized using a flame graph visualization.
-	VisTypeFlameGraph = "flamegraph"
 )
 
 // VisType is used to indicate how the data should be visualized in explore.
 type VisType string
-
-const (
-	// DataTopicAnnotations is used to specify that the frame should be used as annotation of the actual data frame response.
-	// Example: When DataTopic is set to DataTopicAnnotations, the frame will be used as exemplar data in timeseries panel
-	DataTopicAnnotations DataTopic = "annotations"
-)
-
-// DataTopic is used to identify which topic the frame should be assigned to.
-//
-//nolint:revive
-type DataTopic string
 
 // FrameMetaFromJSON creates a QueryResultMeta from a json string
 func FrameMetaFromJSON(jsonStr string) (*FrameMeta, error) {
@@ -162,9 +121,8 @@ func (n NoticeSeverity) String() string {
 		return noticeSeverityWarningString
 	case NoticeSeverityError:
 		return noticeSeverityErrorString
-	default:
-		return ""
 	}
+	return ""
 }
 
 // MarshalJSON implements the json.Marshaler interface.

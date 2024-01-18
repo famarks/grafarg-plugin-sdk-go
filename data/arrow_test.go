@@ -2,22 +2,19 @@ package data_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"math"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/apache/arrow/go/v13/arrow/ipc"
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/require"
-
 	"github.com/famarks/grafarg-plugin-sdk-go/data"
+	"github.com/stretchr/testify/require"
 )
 
-var update = flag.Bool("update", true, "update .golden.arrow files")
+var update = flag.Bool("update", false, "update .golden.arrow files")
 
 const maxEcma6Int = 1<<53 - 1
 const minEcma6Int = -maxEcma6Int
@@ -32,7 +29,8 @@ func goldenDF() *data.Frame {
 				URL:         "https://slothconservation.com/how-to-help/donate/",
 			},
 		},
-		NoValue: "😤",
+		NoValue:       "😤",
+		NullValueMode: data.NullValueModeNull,
 		// math.NaN() and math.Infs become null when encoded to json
 	}).SetDecimals(2).SetMax(math.Inf(1)).SetMin(math.NaN()).SetFilterable(false)
 
@@ -149,6 +147,7 @@ func goldenDF() *data.Frame {
 			uint32Ptr(math.MaxUint32),
 			uint32Ptr(math.MaxUint32),
 		}),
+
 		data.NewField("uint64_values", nil, []uint64{
 			0,
 			0,
@@ -177,20 +176,6 @@ func goldenDF() *data.Frame {
 			float32Ptr(math.MaxFloat32),
 			float32Ptr(math.MaxFloat32),
 		}),
-		data.NewField("float32_values_nans", nil, []float32{
-			float32(math.NaN()),
-			float32(math.Inf(1)),
-			1.0,
-			float32(math.Inf(-1)),
-			0,
-		}),
-		data.NewField("nullable_float32_values_nans", nil, []*float32{
-			float32Ptr(float32(math.Inf(1))),
-			float32Ptr(float32(math.NaN())),
-			nil,
-			float32Ptr(float32(math.Inf(-1))),
-			float32Ptr(0),
-		}),
 		data.NewField("float64_values", nil, []float64{
 			math.SmallestNonzeroFloat64,
 			float64(minEcma6Int),
@@ -198,26 +183,12 @@ func goldenDF() *data.Frame {
 			float64(maxEcma6Int),
 			math.MaxFloat64,
 		}),
-		data.NewField("float64_nans", nil, []float64{
-			math.Inf(-1),
-			math.NaN(),
-			0,
-			math.NaN(),
-			math.Inf(1),
-		}),
 		data.NewField("nullable_float64_values", nil, []*float64{
 			float64Ptr(math.SmallestNonzeroFloat64),
 			float64Ptr(float64(minEcma6Int)),
 			nil,
 			float64Ptr(math.MaxFloat64),
 			float64Ptr(float64(maxEcma6Int)),
-		}),
-		data.NewField("nullable_float64_values_nans", nil, []*float64{
-			float64Ptr(math.Inf(-1)),
-			float64Ptr(0),
-			nil,
-			float64Ptr(math.NaN()),
-			float64Ptr(math.Inf(1)),
 		}),
 		data.NewField("bool_values", nil, []bool{
 			true,
@@ -233,15 +204,12 @@ func goldenDF() *data.Frame {
 			boolPtr(true),
 			boolPtr(false),
 		}),
-
 		data.NewField("timestamps", nil, []time.Time{
 			time.Unix(0, 0),
 			time.Unix(1568039445, 0),
 			time.Unix(1568039450, 0),
 			time.Unix(0, maxEcma6Int),
 			time.Unix(0, math.MaxInt64),
-		}).SetConfig(&data.FieldConfig{
-			Interval: 1000,
 		}),
 		// Note: This is intentionally repeated to create a duplicate field.
 		data.NewField("timestamps", nil, []time.Time{
@@ -258,63 +226,12 @@ func goldenDF() *data.Frame {
 			timePtr(time.Unix(0, maxEcma6Int)),
 			timePtr(time.Unix(0, math.MaxInt64)),
 		}),
-		data.NewField("json", nil, []json.RawMessage{
-			json.RawMessage("{\"a\":1}"),
-			json.RawMessage("[1,2,3]"),
-			json.RawMessage("{\"b\":2}"),
-			json.RawMessage("[{\"c\":3},{\"d\":4}]"),
-			json.RawMessage("{\"e\":{\"f\":5}}"),
-		}),
-		data.NewField("nullable_json", nil, []*json.RawMessage{
-			jsonRawMessagePtr(json.RawMessage("{\"a\":1}")),
-			jsonRawMessagePtr(json.RawMessage("[1,2,3]")),
-			nil,
-			jsonRawMessagePtr(json.RawMessage("[{\"c\":3},{\"d\":4}]")),
-			jsonRawMessagePtr(json.RawMessage("{\"e\":{\"f\":5}}")),
-		}),
-		data.NewField("enum", nil, []data.EnumItemIndex{
-			1, 2, 2, 1, 1,
-		}).SetConfig(&data.FieldConfig{
-			TypeConfig: &data.FieldTypeConfig{
-				Enum: &data.EnumFieldConfig{
-					Text: []string{
-						"", "ONE", "TWO", "THREE",
-					},
-				},
-			},
-		}),
-		data.NewField("nullable_enum", nil, []*data.EnumItemIndex{
-			(*data.EnumItemIndex)(uint16Ptr(1)),
-			(*data.EnumItemIndex)(uint16Ptr(2)),
-			nil,
-			(*data.EnumItemIndex)(uint16Ptr(3)),
-			(*data.EnumItemIndex)(uint16Ptr(0)),
-		}),
 	).SetMeta(&data.FrameMeta{
-		Custom:              map[string]interface{}{"Hi": "there"},
-		ExecutedQueryString: "SELECT * FROM table",
-		Channel:             "sample/channel/name",
-		Stats: []data.QueryStat{
-			{
-				FieldConfig: data.FieldConfig{
-					DisplayName: "sample",
-				},
-				Value: 1.234,
-			},
-		},
+		Custom: map[string]interface{}{"Hi": "there"},
 	})
 
 	df.RefID = "A"
 	return df
-}
-
-func newField[V any](name string, ftype data.FieldType, vals []V) *data.Field {
-	field := data.NewFieldFromFieldType(ftype, len(vals))
-	field.Name = name
-	for i, v := range vals {
-		field.Set(i, v)
-	}
-	return field
 }
 
 func TestEncode(t *testing.T) {
@@ -327,29 +244,18 @@ func TestEncode(t *testing.T) {
 	goldenFile := filepath.Join("testdata", "all_types.golden.arrow")
 
 	if *update {
-		if err := os.WriteFile(goldenFile, b, 0600); err != nil {
+		if err := ioutil.WriteFile(goldenFile, b, 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	want, err := os.ReadFile(goldenFile)
+	want, err := ioutil.ReadFile(goldenFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Check for the same exact file after encode
 	if !bytes.Equal(b, want) {
-		// check if the file still represents the same frame or not
-		newDf, err := data.UnmarshalArrowFrame(want)
-		if err != nil {
-			t.Fatal("unable to create frame from encoded arrow file")
-		}
-
-		if diff := cmp.Diff(df, newDf, data.FrameTestCompareOptions()...); diff != "" {
-			t.Errorf("Arrow frame result mismatch (-want +got):\n%s", diff)
-		}
-
-		t.Fatalf("arrow file doesn't match golden file (new version?)")
+		t.Fatalf("data frame doesn't match golden file")
 	}
 }
 
@@ -359,7 +265,7 @@ func TestEncode(t *testing.T) {
 
 func TestDecode(t *testing.T) {
 	goldenFile := filepath.Join("testdata", "all_types.golden.arrow")
-	b, err := os.ReadFile(goldenFile)
+	b, err := ioutil.ReadFile(goldenFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,35 +314,4 @@ func TestFrameMarshalArrowNoFields(t *testing.T) {
 	f := data.NewFrame("no fields")
 	_, err := f.MarshalArrow()
 	require.NoError(t, err)
-}
-
-func TestFromRecord(t *testing.T) {
-	df := goldenDF()
-	b, err := df.MarshalArrow()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Write golden data frame to file so we can read it back in via Record reader
-	fd, err := os.CreateTemp("", "data-test-from-record")
-	require.NoError(t, err)
-	name := fd.Name()
-	defer os.Remove(name)
-	n, err := fd.Write(b)
-	require.NoError(t, err)
-	require.Equal(t, len(b), n)
-
-	// Read serialised data frame back into Arrow Record.
-	r, err := ipc.NewFileReader(fd)
-	require.NoError(t, err)
-	record, err := r.Read()
-	require.NoError(t, err)
-
-	// Convert Arrow record to data frame.
-	got, err := data.FromArrowRecord(record)
-	require.NoError(t, err)
-
-	if diff := cmp.Diff(df, got, data.FrameTestCompareOptions()...); diff != "" {
-		t.Errorf("Result mismatch (-want +got):\n%s", diff)
-	}
 }

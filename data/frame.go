@@ -10,7 +10,6 @@
 package data
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -19,7 +18,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -29,74 +27,57 @@ import (
 //
 // A Frame is a general data container for Grafarg. A Frame can be table data
 // or time series data depending on its content and field types.
-//
-//swagger:model
 type Frame struct {
 	// Name is used in some Grafarg visualizations.
 	Name string
 
 	// Fields are the columns of a frame.
 	// All Fields must be of the same the length when marshalling the Frame for transmission.
-	// There should be no `nil` entries in the Fields slice (making them pointers was a mistake).
 	Fields []*Field
 
-	// RefID is a property that can be set to match a Frame to its originating query.
+	// RefID is a property that can be set to match a Frame to its orginating query.
 	RefID string
 
 	// Meta is metadata about the Frame, and includes space for custom metadata.
 	Meta *FrameMeta
 }
 
-// UnmarshalJSON allows unmarshalling Frame from JSON.
+// UnmarshalJSON uses the `UnmarshalArrowFrame` function to unmarshal this type from JSON.
 func (f *Frame) UnmarshalJSON(b []byte) error {
-	iter := jsoniter.ParseBytes(jsoniter.ConfigDefault, b)
-	return readDataFrameJSON(f, iter)
-}
+	arrow := []byte{}
 
-// MarshalJSON marshals Frame to JSON.
-func (f *Frame) MarshalJSON() ([]byte, error) {
-	cfg := jsoniter.ConfigCompatibleWithStandardLibrary
-	stream := cfg.BorrowStream(nil)
-	defer cfg.ReturnStream(stream)
-
-	writeDataFrame(f, stream, true, true)
-	if stream.Error != nil {
-		return nil, stream.Error
+	if err := json.Unmarshal(b, &arrow); err != nil {
+		return err
 	}
 
-	return append([]byte(nil), stream.Buffer()...), nil
+	frame, err := UnmarshalArrowFrame(arrow)
+	if err != nil {
+		return err
+	}
+
+	*f = *frame
+
+	return nil
+}
+
+// MarshalJSON uses the `MarshalArrow` function to marshal this type to JSON.
+func (f *Frame) MarshalJSON() ([]byte, error) {
+	arrow, err := f.MarshalArrow()
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(arrow)
 }
 
 // Frames is a slice of Frame pointers.
 // It is the main data container within a backend.DataResponse.
-// There should be no `nil` entries in the Frames slice (making them pointers was a mistake).
-//
-//swagger:model
 type Frames []*Frame
-
-func (frames *Frames) MarshalJSON() ([]byte, error) {
-	cfg := jsoniter.ConfigCompatibleWithStandardLibrary
-	stream := cfg.BorrowStream(nil)
-	defer cfg.ReturnStream(stream)
-
-	writeDataFrames(frames, stream)
-	if stream.Error != nil {
-		return nil, stream.Error
-	}
-
-	return append([]byte(nil), stream.Buffer()...), nil
-}
-
-// UnmarshalJSON allows unmarshalling Frame from JSON.
-func (frames *Frames) UnmarshalJSON(b []byte) error {
-	iter := jsoniter.ParseBytes(jsoniter.ConfigDefault, b)
-	return readDataFramesJSON(frames, iter)
-}
 
 // AppendRow adds a new row to the Frame by appending to each element of vals to
 // the corresponding Field in the data.
 // The Frame's Fields must be initialized or AppendRow will panic.
-// The number of arguments must match the number of Fields in the Frame and each type must correspond
+// The number of arguments must match the number of Fields in the Frame and each type must coorespond
 // to the Field type or AppendRow will panic.
 func (f *Frame) AppendRow(vals ...interface{}) {
 	for i, v := range vals {
@@ -172,10 +153,10 @@ func (f *Frame) EmptyCopy() *Frame {
 	}
 
 	for _, field := range f.Fields {
-		fieldCopy := NewFieldFromFieldType(field.Type(), 0)
-		fieldCopy.Name = field.Name
-		fieldCopy.Labels = field.Labels.Copy()
-		newFrame.Fields = append(newFrame.Fields, fieldCopy)
+		copy := NewFieldFromFieldType(field.Type(), 0)
+		copy.Name = field.Name
+		copy.Labels = field.Labels.Copy()
+		newFrame.Fields = append(newFrame.Fields, copy)
 	}
 	return newFrame
 }
@@ -195,7 +176,7 @@ func NewFrameOfFieldTypes(name string, fieldLen int, fTypes ...FieldType) *Frame
 
 // TypeIndices returns a slice of Field index positions for the given fTypes.
 func (f *Frame) TypeIndices(fTypes ...FieldType) []int {
-	var indices []int
+	indices := []int{}
 	if f.Fields == nil {
 		return indices
 	}
@@ -399,33 +380,8 @@ func FrameTestCompareOptions() []cmp.Option {
 			x == y
 	})
 
-	metas := cmp.Comparer(func(x, y *FrameMeta) bool {
-		// This checks that the meta attached to the frame and
-		// in the Golden file are the same. A conversion to JSON
-		// representation is needed for the Custom field within
-		// the meta where a custom struct{} cannot be directly
-		// compared for equality to a map[string]interface{}{}
-		// but a JSON byte representation of those is equivalent
-		xJSON, _ := json.Marshal(x)
-		yJSON, _ := json.Marshal(y)
-
-		return bytes.Equal(xJSON, yJSON)
-	})
-
-	rawjs := cmp.Comparer(func(x, y json.RawMessage) bool {
-		var a interface{}
-		var b interface{}
-		_ = json.Unmarshal([]byte(x), &a)
-		_ = json.Unmarshal([]byte(y), &b)
-
-		xJSON, _ := json.Marshal(a)
-		yJSON, _ := json.Marshal(b)
-
-		return bytes.Equal(xJSON, yJSON)
-	})
-
 	unexportedField := cmp.AllowUnexported(Field{})
-	return []cmp.Option{f32s, f32Ptrs, f64s, f64Ptrs, confFloats, metas, rawjs, unexportedField, cmpopts.EquateEmpty()}
+	return []cmp.Option{f32s, f32Ptrs, f64s, f64Ptrs, confFloats, unexportedField, cmpopts.EquateEmpty()}
 }
 
 const maxLengthExceededStr = "..."
@@ -505,18 +461,10 @@ func (f *Frame) StringTable(maxFields, maxRows int) (string, error) {
 			}
 
 			val := reflect.Indirect(reflect.ValueOf(v))
-			if !val.IsValid() {
-				sRow[colIdx] = "null"
-				continue
-			}
-
-			switch {
-			case f.Fields[colIdx].Type() == FieldTypeJSON:
-				sRow[colIdx] = string(v.(json.RawMessage))
-			case f.Fields[colIdx].Type() == FieldTypeNullableJSON:
-				sRow[colIdx] = string(*v.(*json.RawMessage))
-			default:
+			if val.IsValid() {
 				sRow[colIdx] = fmt.Sprintf("%v", val)
+			} else {
+				sRow[colIdx] = "null"
 			}
 		}
 		table.Append(sRow)
@@ -524,26 +472,4 @@ func (f *Frame) StringTable(maxFields, maxRows int) (string, error) {
 
 	table.Render()
 	return sb.String(), nil
-}
-
-// FieldByName returns Field by its name and its index in Frame.Fields.
-// If not found then *Field will be nil and index will be -1.
-func (f *Frame) FieldByName(fieldName string) (*Field, int) {
-	for i, field := range f.Fields {
-		if field.Name == fieldName {
-			return field, i
-		}
-	}
-	return nil, -1
-}
-
-// TypeInfo returns the FrameType and FrameTypeVersion from the frame's
-// Meta.Type and Meta.TypeVersion properties. If either of those properties
-// are absent, the corresponding zero value (FrameTypeUnknown and FrameTypeVersion{0,0})
-// is returned per each missing property.
-func (f *Frame) TypeInfo(_ string) (FrameType, FrameTypeVersion) {
-	if f == nil || f.Meta == nil {
-		return FrameTypeUnknown, FrameTypeVersion{}
-	}
-	return f.Meta.Type, f.Meta.TypeVersion
 }

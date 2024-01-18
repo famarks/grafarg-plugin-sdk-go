@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/require"
-
 	"github.com/famarks/grafarg-plugin-sdk-go/data"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFrame(t *testing.T) {
@@ -192,7 +191,7 @@ type mockResponse struct {
 	Series []mockSeries
 }
 
-func ExampleFrame_timeSeriesMulti() {
+func ExampleFrame_tSDBTimeSeriesDifferentTimeIndices() {
 	// A common tsdb response pattern is to return a collection
 	// of time series where each time series is uniquely identified
 	// by a Name and a set of key value pairs (Labels (a.k.a Tags)).
@@ -202,8 +201,6 @@ func ExampleFrame_timeSeriesMulti() {
 	// Number fields.
 
 	// Each Frame should have its value sorted by time in ascending order.
-
-	// See https://grafarg.github.io/dataplane/contract/timeseries for more information.
 
 	res := mockResponse{
 		[]mockSeries{
@@ -236,14 +233,10 @@ func ExampleFrame_timeSeriesMulti() {
 
 	frames := make([]*data.Frame, len(res.Series))
 	for i, series := range res.Series {
-		frames[i] = data.NewFrame("multiExample",
+		frames[i] = data.NewFrame(series.Name,
 			data.NewField("time", nil, make([]time.Time, len(series.Points))),
 			data.NewField(series.Name, series.Labels, make([]float64, len(series.Points))),
-		).SetMeta(&data.FrameMeta{
-			Type:        data.FrameTypeTimeSeriesMulti,
-			TypeVersion: data.FrameTypeVersion{0, 1},
-		})
-
+		)
 		for pIdx, point := range series.Points {
 			frames[i].Set(0, pIdx, point.Time)
 			frames[i].Set(1, pIdx, point.Value)
@@ -255,7 +248,7 @@ func ExampleFrame_timeSeriesMulti() {
 		fmt.Println(st)
 	}
 	// Output:
-	// Name: multiExample
+	// Name: cpu
 	// Dimensions: 2 Fields by 2 Rows
 	// +-------------------------------+-----------------+
 	// | Name: time                    | Name: cpu       |
@@ -266,7 +259,7 @@ func ExampleFrame_timeSeriesMulti() {
 	// | 2020-01-02 03:05:00 +0000 UTC | 6               |
 	// +-------------------------------+-----------------+
 	//
-	// Name: multiExample
+	// Name: cpu
 	// Dimensions: 2 Fields by 2 Rows
 	// +-------------------------------+-----------------+
 	// | Name: time                    | Name: cpu       |
@@ -278,12 +271,10 @@ func ExampleFrame_timeSeriesMulti() {
 	// +-------------------------------+-----------------+
 }
 
-func ExampleFrame_timeSeriesWide() {
+func ExampleFrame_tSDBTimeSeriesSharedTimeIndex() {
 	// In the case where you do know all the response will share the same time index, then
 	// a "wide" dataframe can be created that holds all the responses. So your response is
 	// all in a Single Frame.
-
-	// See https://grafarg.github.io/dataplane/contract/timeseries for more information.
 
 	singleTimeIndexRes := mockResponse{
 		[]mockSeries{
@@ -314,12 +305,7 @@ func ExampleFrame_timeSeriesWide() {
 		},
 	}
 
-	frame := &data.Frame{Name: "wideExample"}
-	frame = frame.SetMeta(&data.FrameMeta{
-		Type:        data.FrameTypeTimeSeriesWide,
-		TypeVersion: data.FrameTypeVersion{0, 1},
-	})
-
+	frame := &data.Frame{Name: "Wide"}
 	for i, series := range singleTimeIndexRes.Series {
 		if i == 0 {
 			frame.Fields = append(frame.Fields,
@@ -340,7 +326,7 @@ func ExampleFrame_timeSeriesWide() {
 	st, _ := frame.StringTable(-1, -1)
 	fmt.Println(st)
 	// Output:
-	// Name: wideExample
+	// Name: Wide
 	// Dimensions: 3 Fields by 2 Rows
 	// +-------------------------------+-----------------+-----------------+
 	// | Name: time                    | Name: cpu       | Name: cpu       |
@@ -352,15 +338,13 @@ func ExampleFrame_timeSeriesWide() {
 	// +-------------------------------+-----------------+-----------------+
 }
 
-func ExampleFrame_timeSeriesLong() {
+func ExampleFrame_tableLikeLongTimeSeries() {
 	// a common SQL or CSV like pattern is to have repeated times, multiple numbered value
 	// columns, and string columns to identify a factors. This is a "Long" time series.
 
 	// Presently the backend supports converting Long formatted series to "Wide" format
 	// which the frontend understands. Goal is frontend support eventually
 	// (https://github.com/famarks/grafarg/issues/22219).
-
-	// See https://grafarg.github.io/dataplane/contract/timeseries for more information.
 
 	type aTable struct {
 		Headers []string
@@ -388,15 +372,16 @@ func ExampleFrame_timeSeriesLong() {
 		data.FieldTypeTime,
 		data.FieldTypeFloat64, data.FieldTypeFloat64,
 		data.FieldTypeString,
-	).SetMeta(&data.FrameMeta{
-		Type:        data.FrameTypeTimeSeriesLong,
-		TypeVersion: data.FrameTypeVersion{0, 1},
-	})
+	)
 	_ = frame.SetFieldNames(myLongTable.Headers...)
 	for _, row := range myLongTable.Rows {
 		frame.AppendRow(row...)
 	}
 	st, _ := frame.StringTable(-1, -1)
+	fmt.Println(st)
+	w, _ := data.LongToWide(frame, nil)
+	w.Name = "Wide"
+	st, _ = w.StringTable(-1, -1)
 	fmt.Println(st)
 	// Output:
 	// Name: Long
@@ -411,6 +396,17 @@ func ExampleFrame_timeSeriesLong() {
 	// | 2020-01-02 03:05:00 +0000 UTC | 3               | 11              | foo              |
 	// | 2020-01-02 03:05:00 +0000 UTC | 6               | 16              | bar              |
 	// +-------------------------------+-----------------+-----------------+------------------+
+	//
+	// Name: Wide
+	// Dimensions: 5 Fields by 2 Rows
+	// +-------------------------------+------------------------+------------------------+------------------------+------------------------+
+	// | Name: time                    | Name: aMetric          | Name: aMetric          | Name: bMetric          | Name: bMetric          |
+	// | Labels:                       | Labels: SomeFactor=bar | Labels: SomeFactor=foo | Labels: SomeFactor=bar | Labels: SomeFactor=foo |
+	// | Type: []time.Time             | Type: []float64        | Type: []float64        | Type: []float64        | Type: []float64        |
+	// +-------------------------------+------------------------+------------------------+------------------------+------------------------+
+	// | 2020-01-02 03:04:00 +0000 UTC | 5                      | 2                      | 15                     | 10                     |
+	// | 2020-01-02 03:05:00 +0000 UTC | 6                      | 3                      | 16                     | 11                     |
+	// +-------------------------------+------------------------+------------------------+------------------------+------------------------+
 }
 
 func TestStringTable(t *testing.T) {
@@ -632,25 +628,4 @@ func stringPtr(s string) *string {
 
 func boolPtr(b bool) *bool {
 	return &b
-}
-
-func jsonRawMessagePtr(j json.RawMessage) *json.RawMessage {
-	return &j
-}
-
-func TestFrameFieldIndexByName(t *testing.T) {
-	frame := data.NewFrame("Frame Name",
-		data.NewField("Time", nil, []time.Time{}),
-		data.NewField("Temp", nil, []float64{}),
-		data.NewField("Count", nil, []*int64{}),
-	)
-	f, i := frame.FieldByName("Time")
-	require.NotNil(t, f)
-	require.Equal(t, 0, i)
-	f, i = frame.FieldByName("time")
-	require.Nil(t, f)
-	require.Equal(t, -1, i)
-	f, i = frame.FieldByName("no-such-field")
-	require.Nil(t, f)
-	require.Equal(t, -1, i)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/famarks/grafarg-plugin-sdk-go/backend"
+	"github.com/famarks/grafarg-plugin-sdk-go/backend/log"
 )
 
 // QueryTypeMux is a query type multiplexer.
@@ -39,10 +40,12 @@ func (mux *QueryTypeMux) Handle(queryType string, handler backend.QueryDataHandl
 	}
 
 	if queryType == "" {
+		log.DefaultLogger.Debug("datasource: registering query type fallback handler")
 		mux.fallbackHandler = handler
 		return
 	}
 
+	log.DefaultLogger.Debug("datasource: registering query type handler", "queryType", queryType)
 	mux.m[queryType] = handler
 }
 
@@ -106,12 +109,11 @@ func (mux *QueryTypeMux) getHandler(queryType string) (string, backend.QueryData
 	return queryType, handler
 }
 
-func fallbackHandler(_ context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+func fallbackHandler(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 	responses := backend.Responses{}
 	for _, q := range req.Queries {
 		responses[q.RefID] = backend.DataResponse{
-			Error:       fmt.Errorf("no handler found for query type '%s'", q.QueryType),
-			ErrorSource: backend.ErrorSourcePlugin,
+			Error: fmt.Errorf("no handler found for query type '%s'", q.QueryType),
 		}
 	}
 

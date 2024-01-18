@@ -6,14 +6,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
-
-	"github.com/famarks/grafarg-plugin-sdk-go/backend/httpclient"
-	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
-	"github.com/famarks/grafarg-plugin-sdk-go/internal/tenant"
 )
 
 func TestCollectMetrcis(t *testing.T) {
@@ -110,37 +106,6 @@ func TestCheckHealth(t *testing.T) {
 			}
 		}
 	})
-
-	t.Run("When headers are present", func(t *testing.T) {
-		adapter := &diagnosticsSDKAdapter{
-			checkHealthHandler: &testCheckHealthHandlerWithHeaders{},
-		}
-		res, err := adapter.CheckHealth(context.Background(), &pluginv2.CheckHealthRequest{
-			Headers: map[string]string{
-				"Authorization": "Bearer 123",
-			},
-			PluginContext: &pluginv2.PluginContext{},
-		})
-		require.NoError(t, err)
-		require.NotNil(t, res)
-		require.Equal(t, pluginv2.CheckHealthResponse_OK, res.Status)
-	})
-
-	t.Run("When tenant information is attached to incoming context, it is propagated from adapter to handler", func(t *testing.T) {
-		tid := "123456"
-		a := newDiagnosticsSDKAdapter(nil, CheckHealthHandlerFunc(func(ctx context.Context, req *CheckHealthRequest) (*CheckHealthResult, error) {
-			require.Equal(t, tid, tenant.IDFromContext(ctx))
-			return &CheckHealthResult{}, nil
-		}))
-
-		ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-			tenant.CtxKey: tid,
-		}))
-		_, err := a.CheckHealth(ctx, &pluginv2.CheckHealthRequest{
-			PluginContext: &pluginv2.PluginContext{},
-		})
-		require.NoError(t, err)
-	})
 }
 
 type testCheckHealthHandler struct {
@@ -150,25 +115,10 @@ type testCheckHealthHandler struct {
 	err         error
 }
 
-func (h *testCheckHealthHandler) CheckHealth(_ context.Context, _ *CheckHealthRequest) (*CheckHealthResult, error) {
+func (h *testCheckHealthHandler) CheckHealth(ctx context.Context, req *CheckHealthRequest) (*CheckHealthResult, error) {
 	return &CheckHealthResult{
 		Status:      h.status,
 		Message:     h.message,
 		JSONDetails: h.jsonDetails,
 	}, h.err
-}
-
-type testCheckHealthHandlerWithHeaders struct{}
-
-func (h *testCheckHealthHandlerWithHeaders) CheckHealth(ctx context.Context, _ *CheckHealthRequest) (*CheckHealthResult, error) {
-	middlewares := httpclient.ContextualMiddlewareFromContext(ctx)
-	if len(middlewares) == 0 {
-		return &CheckHealthResult{
-			Status:  HealthStatusError,
-			Message: "no middleware found",
-		}, nil
-	}
-	return &CheckHealthResult{
-		Status: HealthStatusOk,
-	}, nil
 }

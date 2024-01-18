@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/famarks/grafarg-plugin-sdk-go/backend"
-	"github.com/famarks/grafarg-plugin-sdk-go/backend/log"
 )
 
 // callResourceResponseWriter is an implementation of http.ResponseWriter that
@@ -122,7 +121,7 @@ func (rw *callResourceResponseWriter) Flush() {
 	resp := rw.getResponse()
 	if resp != nil {
 		if err := rw.stream.Send(resp); err != nil {
-			log.DefaultLogger.Error("Failed to send resource response", "error", err)
+			backend.Logger.Error("Failed to send resource response", "error", err)
 		}
 	}
 

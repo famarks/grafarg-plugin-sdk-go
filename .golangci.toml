@@ -8,22 +8,11 @@ min-confidence = 1
 min-len = 2
 min-occurrences = 2
 
-[linters-settings.revive]
-ignore-generated-header = false
-
-[linters-settings.misspell]
-ignore-words = ["unknwon"]
-
-[linters-settings.depguard.rules.main]
-allow = [] # allow all
-deny = [
-  { pkg = "io/ioutil", desc = "Deprecated: As of Go 1.16, the same functionality is now provided by package io or package os, and those implementations should be preferred in new code. See the specific function documentation for details." },
-]
-
 [linters]
 disable-all = true
 enable = [
   "bodyclose",
+  "deadcode",
   "depguard",
   "dogsled",
   "errcheck",
@@ -31,20 +20,24 @@ enable = [
   "goconst",
   "gocritic",
   "goimports",
+  "golint",
   "goprintffuncname",
   "gosec",
   "gosimple",
   "govet",
   "ineffassign",
+  "interfacer",
   "misspell",
   "nakedret",
   "rowserrcheck",
   "exportloopref",
   "staticcheck",
+  "structcheck",
   "stylecheck",
   "typecheck",
   "unconvert",
   "unused",
+  "varcheck",
   "whitespace",
   "gocyclo",
   "unparam",
@@ -53,7 +46,6 @@ enable = [
   "errorlint",
   "sqlclosecheck",
   "thelper",
-  "revive"
 ]
 # Don't require that errors are included through wrapping, since might not always want to wrap an error
 [[issues.exclude-rules]]

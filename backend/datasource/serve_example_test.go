@@ -7,7 +7,6 @@ import (
 
 	"github.com/famarks/grafarg-plugin-sdk-go/backend"
 	"github.com/famarks/grafarg-plugin-sdk-go/backend/datasource"
-	"github.com/famarks/grafarg-plugin-sdk-go/backend/httpclient"
 	"github.com/famarks/grafarg-plugin-sdk-go/backend/instancemgmt"
 	"github.com/famarks/grafarg-plugin-sdk-go/backend/resource/httpadapter"
 )
@@ -16,19 +15,9 @@ type testDataSourceInstanceSettings struct {
 	httpClient *http.Client
 }
 
-func newDataSourceInstance(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	opts, err := settings.HTTPClientOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := httpclient.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
+func newDataSourceInstance(setting backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	return &testDataSourceInstanceSettings{
-		httpClient: client,
+		httpClient: &http.Client{},
 	}, nil
 }
 
@@ -56,8 +45,8 @@ func newDataSource() datasource.ServeOpts {
 	}
 }
 
-func (ds *testDataSource) getSettings(ctx context.Context, pluginContext backend.PluginContext) (*testDataSourceInstanceSettings, error) {
-	iface, err := ds.im.Get(ctx, pluginContext)
+func (ds *testDataSource) getSettings(pluginContext backend.PluginContext) (*testDataSourceInstanceSettings, error) {
+	iface, err := ds.im.Get(pluginContext)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +55,7 @@ func (ds *testDataSource) getSettings(ctx context.Context, pluginContext backend
 }
 
 func (ds *testDataSource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	settings, err := ds.getSettings(ctx, req.PluginContext)
+	settings, err := ds.getSettings(req.PluginContext)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +71,7 @@ func (ds *testDataSource) CheckHealth(ctx context.Context, req *backend.CheckHea
 
 func (ds *testDataSource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 	var resp *backend.QueryDataResponse
-	err := ds.im.Do(ctx, req.PluginContext, func(settings *testDataSourceInstanceSettings) error {
+	err := ds.im.Do(req.PluginContext, func(settings *testDataSourceInstanceSettings) error {
 		// Handle request
 		resp, err := settings.httpClient.Get("http://")
 		if err != nil {
@@ -96,9 +85,8 @@ func (ds *testDataSource) QueryData(ctx context.Context, req *backend.QueryDataR
 }
 
 func (ds *testDataSource) handleTest(rw http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	pluginContext := httpadapter.PluginConfigFromContext(ctx)
-	settings, err := ds.getSettings(ctx, pluginContext)
+	pluginContext := httpadapter.PluginConfigFromContext(req.Context())
+	settings, err := ds.getSettings(pluginContext)
 	if err != nil {
 		rw.WriteHeader(500)
 		return

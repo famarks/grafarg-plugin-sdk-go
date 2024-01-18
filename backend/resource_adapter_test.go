@@ -3,16 +3,12 @@ package backend
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
-
-	"github.com/famarks/grafarg-plugin-sdk-go/backend/httpclient"
-	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
-	"github.com/famarks/grafarg-plugin-sdk-go/internal/tenant"
 )
 
 func TestCallResource(t *testing.T) {
@@ -141,38 +137,6 @@ func TestCallResource(t *testing.T) {
 		require.NotNil(t, resp3)
 		require.Equal(t, "over and out", string(resp3.Body))
 	})
-
-	t.Run("When oauth headers are set it should set the middleware to set headers", func(t *testing.T) {
-		testSender := newTestCallResourceServer()
-		adapter := newResourceSDKAdapter(&testCallResourceWithHeaders{})
-		err := adapter.CallResource(&pluginv2.CallResourceRequest{
-			PluginContext: &pluginv2.PluginContext{},
-			Headers: map[string]*pluginv2.StringList{
-				"Authorization": {
-					Values: []string{"Bearer 123"},
-				},
-			},
-		}, testSender)
-		require.NoError(t, err)
-	})
-
-	t.Run("When tenant information is attached to incoming context, it is propagated from adapter to handler", func(t *testing.T) {
-		tid := "123456"
-		a := newResourceSDKAdapter(CallResourceHandlerFunc(func(ctx context.Context, req *CallResourceRequest, sender CallResourceResponseSender) error {
-			require.Equal(t, tid, tenant.IDFromContext(ctx))
-			return nil
-		}))
-
-		testSender := newTestCallResourceServer()
-		testSender.WithContext(metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-			tenant.CtxKey: tid,
-		})))
-
-		err := a.CallResource(&pluginv2.CallResourceRequest{
-			PluginContext: &pluginv2.PluginContext{},
-		}, testSender)
-		require.NoError(t, err)
-	})
 }
 
 type testCallResourceHandler struct {
@@ -183,7 +147,7 @@ type testCallResourceHandler struct {
 	actualReq       *CallResourceRequest
 }
 
-func (h *testCallResourceHandler) CallResource(_ context.Context, req *CallResourceRequest, sender CallResourceResponseSender) error {
+func (h *testCallResourceHandler) CallResource(ctx context.Context, req *CallResourceRequest, sender CallResourceResponseSender) error {
 	h.actualReq = req
 	err := sender.Send(&CallResourceResponse{
 		Status:  h.responseStatus,
@@ -204,7 +168,7 @@ type testCallResourceStreamHandler struct {
 	responseErr      error
 }
 
-func (h *testCallResourceStreamHandler) CallResource(_ context.Context, _ *CallResourceRequest, sender CallResourceResponseSender) error {
+func (h *testCallResourceStreamHandler) CallResource(ctx context.Context, req *CallResourceRequest, sender CallResourceResponseSender) error {
 	err := sender.Send(&CallResourceResponse{
 		Status:  h.responseStatus,
 		Headers: h.responseHeaders,
@@ -234,7 +198,6 @@ type testCallResourceServer struct {
 func newTestCallResourceServer() *testCallResourceServer {
 	return &testCallResourceServer{
 		respMessages: []*pluginv2.CallResourceResponse{},
-		ctx:          context.Background(),
 	}
 }
 
@@ -259,24 +222,10 @@ func (srv *testCallResourceServer) Context() context.Context {
 	return srv.ctx
 }
 
-func (srv *testCallResourceServer) SendMsg(_ interface{}) error {
+func (srv *testCallResourceServer) SendMsg(m interface{}) error {
 	return nil
 }
 
-func (srv *testCallResourceServer) RecvMsg(_ interface{}) error {
-	return nil
-}
-
-func (srv *testCallResourceServer) WithContext(ctx context.Context) {
-	srv.ctx = ctx
-}
-
-type testCallResourceWithHeaders struct{}
-
-func (h *testCallResourceWithHeaders) CallResource(ctx context.Context, _ *CallResourceRequest, _ CallResourceResponseSender) error {
-	middlewares := httpclient.ContextualMiddlewareFromContext(ctx)
-	if len(middlewares) == 0 {
-		return fmt.Errorf("no middlewares found")
-	}
+func (srv *testCallResourceServer) RecvMsg(m interface{}) error {
 	return nil
 }

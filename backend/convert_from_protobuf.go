@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/famarks/grafarg-plugin-sdk-go/backend/useragent"
 	"github.com/famarks/grafarg-plugin-sdk-go/data"
 	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 )
@@ -50,7 +49,7 @@ func (f ConvertFromProtobuf) AppInstanceSettings(proto *pluginv2.AppInstanceSett
 }
 
 // DataSourceInstanceSettings converts protobuf version of a DataSourceInstanceSettings to the SDK version.
-func (f ConvertFromProtobuf) DataSourceInstanceSettings(proto *pluginv2.DataSourceInstanceSettings, pluginID string) *DataSourceInstanceSettings {
+func (f ConvertFromProtobuf) DataSourceInstanceSettings(proto *pluginv2.DataSourceInstanceSettings) *DataSourceInstanceSettings {
 	if proto == nil {
 		return nil
 	}
@@ -58,7 +57,6 @@ func (f ConvertFromProtobuf) DataSourceInstanceSettings(proto *pluginv2.DataSour
 	return &DataSourceInstanceSettings{
 		ID:                      proto.Id,
 		UID:                     proto.Uid,
-		Type:                    pluginID,
 		Name:                    proto.Name,
 		URL:                     proto.Url,
 		User:                    proto.User,
@@ -71,29 +69,14 @@ func (f ConvertFromProtobuf) DataSourceInstanceSettings(proto *pluginv2.DataSour
 	}
 }
 
-// UserAgent converts protobuf version of a UserAgent to the SDK version.
-func (f ConvertFromProtobuf) UserAgent(u string) *useragent.UserAgent {
-	if len(u) == 0 {
-		return nil
-	}
-	ua, err := useragent.Parse(u)
-	if err != nil {
-		return nil
-	}
-	return ua
-}
-
 // PluginContext converts protobuf version of a PluginContext to the SDK version.
 func (f ConvertFromProtobuf) PluginContext(proto *pluginv2.PluginContext) PluginContext {
 	return PluginContext{
 		OrgID:                      proto.OrgId,
 		PluginID:                   proto.PluginId,
-		PluginVersion:              proto.PluginVersion,
 		User:                       f.User(proto.User),
 		AppInstanceSettings:        f.AppInstanceSettings(proto.AppInstanceSettings),
-		DataSourceInstanceSettings: f.DataSourceInstanceSettings(proto.DataSourceInstanceSettings, proto.PluginId),
-		GrafargConfig:              f.GrafargConfig(proto.GrafargConfig),
-		UserAgent:                  f.UserAgent(proto.UserAgent),
+		DataSourceInstanceSettings: f.DataSourceInstanceSettings(proto.DataSourceInstanceSettings),
 	}
 }
 
@@ -107,9 +90,6 @@ func (f ConvertFromProtobuf) TimeRange(proto *pluginv2.TimeRange) TimeRange {
 
 // DataQuery converts protobuf version of a DataQuery to the SDK version.
 func (f ConvertFromProtobuf) DataQuery(proto *pluginv2.DataQuery) *DataQuery {
-	if proto == nil {
-		return nil
-	}
 	return &DataQuery{
 		RefID:         proto.RefId,
 		QueryType:     proto.QueryType,
@@ -144,19 +124,11 @@ func (f ConvertFromProtobuf) QueryDataResponse(protoRes *pluginv2.QueryDataRespo
 		if err != nil {
 			return nil, err
 		}
-
-		status := Status(res.Status)
-		if !status.IsValid() {
-			status = StatusUnknown
-		}
-
 		dr := DataResponse{
 			Frames: frames,
-			Status: status,
 		}
 		if res.Error != "" {
 			dr.Error = errors.New(res.Error)
-			dr.ErrorSource = ErrorSource(res.ErrorSource)
 		}
 		qdr.Responses[refID] = dr
 	}
@@ -196,13 +168,8 @@ func (f ConvertFromProtobuf) CallResourceResponse(protoResp *pluginv2.CallResour
 
 // CheckHealthRequest converts protobuf version of a CheckHealthRequest to the SDK version.
 func (f ConvertFromProtobuf) CheckHealthRequest(protoReq *pluginv2.CheckHealthRequest) *CheckHealthRequest {
-	if protoReq.Headers == nil {
-		protoReq.Headers = map[string]string{}
-	}
-
 	return &CheckHealthRequest{
 		PluginContext: f.PluginContext(protoReq.PluginContext),
-		Headers:       protoReq.Headers,
 	}
 }
 
@@ -223,13 +190,6 @@ func (f ConvertFromProtobuf) CheckHealthResponse(protoResp *pluginv2.CheckHealth
 	}
 }
 
-// CollectMetricsRequest converts protobuf version of a CollectMetricsRequest to the SDK version.
-func (f ConvertFromProtobuf) CollectMetricsRequest(protoReq *pluginv2.CollectMetricsRequest) *CollectMetricsRequest {
-	return &CollectMetricsRequest{
-		PluginContext: f.PluginContext(protoReq.PluginContext),
-	}
-}
-
 // CollectMetricsResponse converts protobuf version of a CollectMetricsResponse to the SDK version.
 func (f ConvertFromProtobuf) CollectMetricsResponse(protoResp *pluginv2.CollectMetricsResponse) *CollectMetricsResult {
 	var prometheusMetrics []byte
@@ -241,59 +201,4 @@ func (f ConvertFromProtobuf) CollectMetricsResponse(protoResp *pluginv2.CollectM
 	return &CollectMetricsResult{
 		PrometheusMetrics: prometheusMetrics,
 	}
-}
-
-// SubscribeStreamRequest ...
-func (f ConvertFromProtobuf) SubscribeStreamRequest(protoReq *pluginv2.SubscribeStreamRequest) *SubscribeStreamRequest {
-	return &SubscribeStreamRequest{
-		PluginContext: f.PluginContext(protoReq.PluginContext),
-		Path:          protoReq.GetPath(),
-		Data:          protoReq.GetData(),
-	}
-}
-
-// SubscribeStreamResponse ...
-func (f ConvertFromProtobuf) SubscribeStreamResponse(protoReq *pluginv2.SubscribeStreamResponse) *SubscribeStreamResponse {
-	return &SubscribeStreamResponse{
-		Status: SubscribeStreamStatus(protoReq.GetStatus()),
-		InitialData: &InitialData{
-			data: protoReq.Data,
-		},
-	}
-}
-
-// PublishStreamRequest ...
-func (f ConvertFromProtobuf) PublishStreamRequest(protoReq *pluginv2.PublishStreamRequest) *PublishStreamRequest {
-	return &PublishStreamRequest{
-		PluginContext: f.PluginContext(protoReq.PluginContext),
-		Path:          protoReq.GetPath(),
-	}
-}
-
-// PublishStreamResponse ...
-func (f ConvertFromProtobuf) PublishStreamResponse(protoReq *pluginv2.PublishStreamResponse) *PublishStreamResponse {
-	return &PublishStreamResponse{
-		Status: PublishStreamStatus(protoReq.GetStatus()),
-		Data:   protoReq.GetData(),
-	}
-}
-
-// RunStreamRequest ...
-func (f ConvertFromProtobuf) RunStreamRequest(protoReq *pluginv2.RunStreamRequest) *RunStreamRequest {
-	return &RunStreamRequest{
-		PluginContext: f.PluginContext(protoReq.PluginContext),
-		Path:          protoReq.GetPath(),
-		Data:          protoReq.GetData(),
-	}
-}
-
-// StreamPacket ...
-func (f ConvertFromProtobuf) StreamPacket(protoReq *pluginv2.StreamPacket) *StreamPacket {
-	return &StreamPacket{
-		Data: protoReq.GetData(),
-	}
-}
-
-func (f ConvertFromProtobuf) GrafargConfig(cfg map[string]string) *GrafargCfg {
-	return NewGrafargCfg(cfg)
 }

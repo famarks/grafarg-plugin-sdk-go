@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,13 +12,13 @@ import (
 )
 
 func TestCopyFile(t *testing.T) {
-	src, err := os.CreateTemp("", "")
+	src, err := ioutil.TempFile("", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(src.Name())
-	err = os.WriteFile(src.Name(), []byte("Contents"), 0600)
+	err = ioutil.WriteFile(src.Name(), []byte("Contents"), 0600)
 	require.NoError(t, err)
 
-	dst, err := os.CreateTemp("", "")
+	dst, err := ioutil.TempFile("", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(dst.Name())
 
@@ -27,7 +28,7 @@ func TestCopyFile(t *testing.T) {
 
 // Test case where destination directory doesn't exist.
 func TestCopyFile_NonExistentDestDir(t *testing.T) {
-	src, err := os.CreateTemp("", "")
+	src, err := ioutil.TempFile("", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(src.Name())
 
@@ -36,14 +37,18 @@ func TestCopyFile_NonExistentDestDir(t *testing.T) {
 }
 
 func TestCopyRecursive_NonExistentDest(t *testing.T) {
-	src := t.TempDir()
-
-	err := os.MkdirAll(path.Join(src, "data"), 0755)
+	src, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
-	err = os.WriteFile(path.Join(src, "data", "file.txt"), []byte("Test"), 0600)
+	defer os.RemoveAll(src)
+
+	err = os.MkdirAll(path.Join(src, "data"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(path.Join(src, "data", "file.txt"), []byte("Test"), 0600)
 	require.NoError(t, err)
 
-	dstParent := t.TempDir()
+	dstParent, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(dstParent)
 
 	dst := path.Join(dstParent, "dest")
 
@@ -54,14 +59,18 @@ func TestCopyRecursive_NonExistentDest(t *testing.T) {
 }
 
 func TestCopyRecursive_ExistentDest(t *testing.T) {
-	src := t.TempDir()
-
-	err := os.MkdirAll(path.Join(src, "data"), 0755)
+	src, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
-	err = os.WriteFile(path.Join(src, "data", "file.txt"), []byte("Test"), 0600)
+	defer os.RemoveAll(src)
+
+	err = os.MkdirAll(path.Join(src, "data"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(path.Join(src, "data", "file.txt"), []byte("Test"), 0600)
 	require.NoError(t, err)
 
-	dst := t.TempDir()
+	dst, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(dst)
 
 	err = CopyRecursive(src, dst)
 	require.NoError(t, err)
@@ -97,9 +106,9 @@ func compareDirs(t *testing.T, src, dst string) {
 			return nil
 		}
 
-		srcData, err := os.ReadFile(srcPath)
+		srcData, err := ioutil.ReadFile(srcPath)
 		require.NoError(t, err)
-		dstData, err := os.ReadFile(dstPath)
+		dstData, err := ioutil.ReadFile(dstPath)
 		require.NoError(t, err)
 
 		require.Equal(t, srcData, dstData)

@@ -3,12 +3,9 @@ package backend
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"net/http"
 	"time"
 
 	"github.com/famarks/grafarg-plugin-sdk-go/data"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // QueryDataHandler handles data queries.
@@ -38,50 +35,9 @@ func (fn QueryDataHandlerFunc) QueryData(ctx context.Context, req *QueryDataRequ
 // QueryDataRequest contains a single request which contains multiple queries.
 // It is the input type for a QueryData call.
 type QueryDataRequest struct {
-	// PluginContext the contextual information for the request.
 	PluginContext PluginContext
-
-	// Headers the environment/metadata information for the request.
-	//
-	// To access forwarded HTTP headers please use
-	// GetHTTPHeaders or GetHTTPHeader.
-	Headers map[string]string
-
-	// Queries the data queries for the request.
-	Queries []DataQuery
-}
-
-// SetHTTPHeader sets the header entries associated with key to the
-// single element value. It replaces any existing values
-// associated with key. The key is case insensitive; it is
-// canonicalized by textproto.CanonicalMIMEHeaderKey.
-func (req *QueryDataRequest) SetHTTPHeader(key, value string) {
-	if req.Headers == nil {
-		req.Headers = map[string]string{}
-	}
-
-	setHTTPHeaderInStringMap(req.Headers, key, value)
-}
-
-// DeleteHTTPHeader deletes the values associated with key.
-// The key is case insensitive; it is canonicalized by
-// CanonicalHeaderKey.
-func (req *QueryDataRequest) DeleteHTTPHeader(key string) {
-	deleteHTTPHeaderInStringMap(req.Headers, key)
-}
-
-// GetHTTPHeader gets the first value associated with the given key. If
-// there are no values associated with the key, Get returns "".
-// It is case insensitive; textproto.CanonicalMIMEHeaderKey is
-// used to canonicalize the provided key. Get assumes that all
-// keys are stored in canonical form.
-func (req *QueryDataRequest) GetHTTPHeader(key string) string {
-	return req.GetHTTPHeaders().Get(key)
-}
-
-// GetHTTPHeaders returns HTTP headers.
-func (req *QueryDataRequest) GetHTTPHeaders() http.Header {
-	return getHTTPHeadersFromStringMap(req.Headers)
+	Headers       map[string]string
+	Queries       []DataQuery
 }
 
 // DataQuery represents a single query as sent from the frontend.
@@ -114,23 +70,6 @@ type QueryDataResponse struct {
 	Responses Responses
 }
 
-// MarshalJSON writes the results as json
-func (r QueryDataResponse) MarshalJSON() ([]byte, error) {
-	cfg := jsoniter.ConfigCompatibleWithStandardLibrary
-	stream := cfg.BorrowStream(nil)
-	defer cfg.ReturnStream(stream)
-
-	writeQueryDataResponseJSON(&r, stream)
-	return append([]byte(nil), stream.Buffer()...), stream.Error
-}
-
-// UnmarshalJSON will read JSON into a QueryDataResponse
-func (r *QueryDataResponse) UnmarshalJSON(b []byte) error {
-	iter := jsoniter.ParseBytes(jsoniter.ConfigDefault, b)
-	readQueryDataResultsJSON(r, iter)
-	return iter.Error
-}
-
 // NewQueryDataResponse returns a QueryDataResponse with the Responses property initialized.
 func NewQueryDataResponse() *QueryDataResponse {
 	return &QueryDataResponse{
@@ -140,55 +79,18 @@ func NewQueryDataResponse() *QueryDataResponse {
 
 // Responses is a map of RefIDs (Unique Query ID) to DataResponses.
 // The QueryData method the QueryDataHandler method will set the RefId
-// property on the DataResponses' frames based on these RefIDs.
-//
-//swagger:model
+// property on the DataRespones' frames based on these RefIDs.
 type Responses map[string]DataResponse
 
 // DataResponse contains the results from a DataQuery.
-// A map of RefIDs (unique query identifiers) to this type makes up the Responses property of a QueryDataResponse.
+// A map of RefIDs (unique query identifers) to this type makes up the Responses property of a QueryDataResponse.
 // The Error property is used to allow for partial success responses from the containing QueryDataResponse.
-//
-//swagger:model
 type DataResponse struct {
 	// The data returned from the Query. Each Frame repeats the RefID.
 	Frames data.Frames
 
-	// Error is a property to be set if the corresponding DataQuery has an error.
+	// Error is a property to be set if the the corresponding DataQuery has an error.
 	Error error
-
-	// Status codes map to HTTP status values
-	Status Status
-
-	// ErrorSource is the the source of the error
-	ErrorSource ErrorSource
-}
-
-// ErrDataResponse returns an error DataResponse given status and message.
-func ErrDataResponse(status Status, message string) DataResponse {
-	return DataResponse{
-		Error:  errors.New(message),
-		Status: status,
-	}
-}
-
-// ErrDataResponseWithSource returns an error DataResponse given status, source of the error and message.
-func ErrDataResponseWithSource(status Status, src ErrorSource, message string) DataResponse {
-	return DataResponse{
-		Error:       errors.New(message),
-		ErrorSource: src,
-		Status:      status,
-	}
-}
-
-// MarshalJSON writes the results as json
-func (r DataResponse) MarshalJSON() ([]byte, error) {
-	cfg := jsoniter.ConfigCompatibleWithStandardLibrary
-	stream := cfg.BorrowStream(nil)
-	defer cfg.ReturnStream(stream)
-
-	writeDataResponseJSON(&r, stream)
-	return append([]byte(nil), stream.Buffer()...), stream.Error
 }
 
 // TimeRange represents a time range for a query and is a property of DataQuery.
@@ -204,5 +106,3 @@ type TimeRange struct {
 func (tr TimeRange) Duration() time.Duration {
 	return tr.To.Sub(tr.From)
 }
-
-var _ ForwardHTTPHeaders = (*QueryDataRequest)(nil)

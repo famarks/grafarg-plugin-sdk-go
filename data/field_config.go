@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 )
 
 // FieldConfig represents the display properties for a Field.
@@ -17,7 +16,7 @@ type FieldConfig struct {
 	// DisplayName overrides Grafarg default naming, should not be used from a data source
 	DisplayName string `json:"displayName,omitempty"`
 
-	// DisplayNameFromDS overrides Grafarg default naming strategy.
+	// DisplayNameFromDS overrides Grafarg default naming in a better way that allows users to override it easily.
 	DisplayNameFromDS string `json:"displayNameFromDS,omitempty"`
 
 	// Path is an explicit path to the field in the datasource. When the frame meta includes a path,
@@ -33,23 +32,14 @@ type FieldConfig struct {
 	// Filterable indicates if the Field's data can be filtered by additional calls.
 	Filterable *bool `json:"filterable,omitempty"`
 
-	// Writeable indicates that the datasource knows how to update this value
-	Writeable *bool `json:"writeable,omitempty"`
-
 	// Numeric Options
 	Unit     string       `json:"unit,omitempty"`     // is the string to display to represent the Field's unit, such as "Requests/sec"
 	Decimals *uint16      `json:"decimals,omitempty"` // is the number of decimal places to display
 	Min      *ConfFloat64 `json:"min,omitempty"`      // is the maximum value of fields in the column. When present the frontend can skip the calculation.
 	Max      *ConfFloat64 `json:"max,omitempty"`      // see Min
 
-	// Interval indicates the expected regular step between values in the series.
-	// When an interval exists, consumers can identify "missing" values when the expected value is not present.
-	// The grafarg timeseries visualization will render disconnected values when missing values are found it the time field.
-	// The interval uses the same units as the values.  For time.Time, this is defined in milliseconds.
-	Interval float64 `json:"interval,omitempty"`
-
 	// Convert input values into a display string
-	Mappings ValueMappings `json:"mappings,omitempty"`
+	Mappings []ValueMapping `json:"mappings,omitempty"`
 
 	// Map numeric values to states
 	Thresholds *ThresholdsConfig `json:"thresholds,omitempty"`
@@ -58,42 +48,18 @@ type FieldConfig struct {
 	// NOTE: this interface is under development in the frontend... so simple map for now
 	Color map[string]interface{} `json:"color,omitempty"`
 
+	// Used when reducing field values
+	NullValueMode NullValueMode `json:"nullValueMode,omitempty"`
+
 	// The behavior when clicking on a result
 	Links []DataLink `json:"links,omitempty"`
 
 	// Alternative to empty string
 	NoValue string `json:"noValue,omitempty"`
 
-	// Type specific configs
-	TypeConfig *FieldTypeConfig `json:"type,omitempty"`
-
 	// Panel Specific Values
 	Custom map[string]interface{} `json:"custom,omitempty"`
 }
-
-// FieldTypeConfig has type specific configs, only one should be active at a time
-type FieldTypeConfig struct {
-	Enum *EnumFieldConfig `json:"enum,omitempty"`
-}
-
-// Enum field config
-// Vector values are used as lookup keys into the enum fields
-type EnumFieldConfig struct {
-	// Value is the string display value for a given index
-	Text []string `json:"text"`
-
-	// Color is the color value for a given index (empty is undefined)
-	Color []string `json:"color,omitempty"`
-
-	// Icon supports setting an icon for a given index value
-	Icon []string `json:"icon,omitempty"`
-
-	// Description of the enum state
-	Description []string `json:"description,omitempty"`
-}
-
-// ExplicitNullValue is the string representation for null
-const ExplicitNullValue = "null"
 
 // ConfFloat64 is a float64. It Marshals float64 values of NaN of Inf
 // to null.
@@ -102,7 +68,7 @@ type ConfFloat64 float64
 // MarshalJSON fullfills the json.Marshaler interface.
 func (sf *ConfFloat64) MarshalJSON() ([]byte, error) {
 	if sf == nil || math.IsNaN(float64(*sf)) || math.IsInf(float64(*sf), -1) || math.IsInf(float64(*sf), 1) {
-		return []byte(string(ExplicitNullValue)), nil
+		return []byte(string(NullValueModeNull)), nil
 	}
 
 	return []byte(fmt.Sprintf(`%v`, float64(*sf))), nil
@@ -111,7 +77,7 @@ func (sf *ConfFloat64) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON fullfills the json.Unmarshaler interface.
 func (sf *ConfFloat64) UnmarshalJSON(data []byte) error {
 	s := string(data)
-	if s == string(ExplicitNullValue) {
+	if s == string(NullValueModeNull) {
 		return nil
 	}
 	v, err := strconv.ParseFloat(s, 64)
@@ -157,46 +123,49 @@ func (fc *FieldConfig) SetFilterable(b bool) *FieldConfig {
 	return fc
 }
 
-// DataLink define what
-type DataLink struct { //revive:disable-line
-	Title       string            `json:"title,omitempty"`
-	TargetBlank bool              `json:"targetBlank,omitempty"`
-	URL         string            `json:"url,omitempty"`
-	Internal    *InternalDataLink `json:"internal,omitempty"`
-}
-
-// InternalDataLink definition to allow Explore links to be constructed in the backend
-type InternalDataLink struct {
-	Query              any                         `json:"query,omitempty"`
-	DatasourceUID      string                      `json:"datasourceUid,omitempty"`
-	DatasourceName     string                      `json:"datasourceName,omitempty"`
-	ExplorePanelsState *ExplorePanelsState         `json:"panelsState,omitempty"`
-	Transformations    *[]LinkTransformationConfig `json:"transformations,omitempty"`
-	Range              *TimeRange                  `json:"timeRange,omitempty"`
-}
-
-// This is an object constructed with the keys as the values of the enum VisType and the value being a bag of properties
-type ExplorePanelsState any
-
-// Redefining this to avoid an import cycle
-type TimeRange struct {
-	From time.Time `json:"from,omitempty"`
-	To   time.Time `json:"to,omitempty"`
-}
-
-type LinkTransformationConfig struct {
-	Type       SupportedTransformationTypes `json:"type,omitempty"`
-	Field      string                       `json:"field,omitempty"`
-	Expression string                       `json:"expression,omitempty"`
-	MapValue   string                       `json:"mapValue,omitempty"`
-}
-
-type SupportedTransformationTypes string
+// NullValueMode say how the UI should show null values
+type NullValueMode string
 
 const (
-	Regex  SupportedTransformationTypes = "regex"
-	Logfmt SupportedTransformationTypes = "logfmt"
+	// NullValueModeNull displays null values
+	NullValueModeNull NullValueMode = "null"
+	// NullValueModeIgnore sets the display to ignore null values
+	NullValueModeIgnore NullValueMode = "connected"
+	// NullValueModeAsZero set the display show null values as zero
+	NullValueModeAsZero NullValueMode = "null as zero"
 )
+
+// MappingType value or range
+type MappingType int8
+
+const (
+	// ValueToText map a value to text
+	ValueToText MappingType = iota + 1
+
+	// RangeToText map a range to text
+	RangeToText
+)
+
+// ValueMapping convert input value to something else
+type ValueMapping struct {
+	ID   int16       `json:"id,omitempty"`
+	Text string      `json:"text,omitempty"`
+	Type MappingType `json:"type,omitempty"`
+
+	// Only valid for MappingType == ValueMap
+	Value string `json:"value,omitempty"`
+
+	// Only valid for MappingType == RangeMap
+	From string `json:"from,omitempty"`
+	To   string `json:"to,omitempty"`
+}
+
+// DataLink define what
+type DataLink struct { //revive:disable-line
+	Title       string `json:"title,omitempty"`
+	TargetBlank bool   `json:"targetBlank,omitempty"`
+	URL         string `json:"url,omitempty"`
+}
 
 // ThresholdsConfig setup thresholds
 type ThresholdsConfig struct {

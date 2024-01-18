@@ -4,22 +4,15 @@
 
 package data
 
-import (
-	"encoding/json"
-	"time"
-)
+import "time"
+
+//go:Uint8erate uint8ny -in=$GOFILE -out=vector.Uint8.go uint8 "Uint8=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type uint8Vector []uint8
 
 func newUint8Vector(n int) *uint8Vector {
 	v := uint8Vector(make([]uint8, n))
 	return &v
-}
-
-func newUint8VectorWithValues(s []uint8) *uint8Vector {
-	v := make([]uint8, len(s))
-	copy(v, s)
-	return (*uint8Vector)(&v)
 }
 
 func (v *uint8Vector) Set(idx int, i interface{}) {
@@ -31,7 +24,7 @@ func (v *uint8Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *uint8Vector) Append(i interface{}) {
-	*v = append(*v, i.(uint8))
+	(*v) = append((*v), i.(uint8))
 }
 
 func (v *uint8Vector) At(i int) interface{} {
@@ -43,7 +36,7 @@ func (v *uint8Vector) PointerAt(i int) interface{} {
 }
 
 func (v *uint8Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *uint8Vector) CopyAt(i int) interface{} {
@@ -61,7 +54,7 @@ func (v *uint8Vector) Type() FieldType {
 }
 
 func (v *uint8Vector) Extend(i int) {
-	*v = append(*v, make([]uint8, i)...)
+	(*v) = append((*v), make([]uint8, i)...)
 }
 
 func (v *uint8Vector) Insert(i int, val interface{}) {
@@ -78,20 +71,16 @@ func (v *uint8Vector) Insert(i int, val interface{}) {
 }
 
 func (v *uint8Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Uint16erate uint16ny -in=$GOFILE -out=vector.Uint16.go uint16 "Uint16=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type uint16Vector []uint16
 
 func newUint16Vector(n int) *uint16Vector {
 	v := uint16Vector(make([]uint16, n))
 	return &v
-}
-
-func newUint16VectorWithValues(s []uint16) *uint16Vector {
-	v := make([]uint16, len(s))
-	copy(v, s)
-	return (*uint16Vector)(&v)
 }
 
 func (v *uint16Vector) Set(idx int, i interface{}) {
@@ -103,7 +92,7 @@ func (v *uint16Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *uint16Vector) Append(i interface{}) {
-	*v = append(*v, i.(uint16))
+	(*v) = append((*v), i.(uint16))
 }
 
 func (v *uint16Vector) At(i int) interface{} {
@@ -115,7 +104,7 @@ func (v *uint16Vector) PointerAt(i int) interface{} {
 }
 
 func (v *uint16Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *uint16Vector) CopyAt(i int) interface{} {
@@ -133,7 +122,7 @@ func (v *uint16Vector) Type() FieldType {
 }
 
 func (v *uint16Vector) Extend(i int) {
-	*v = append(*v, make([]uint16, i)...)
+	(*v) = append((*v), make([]uint16, i)...)
 }
 
 func (v *uint16Vector) Insert(i int, val interface{}) {
@@ -150,20 +139,16 @@ func (v *uint16Vector) Insert(i int, val interface{}) {
 }
 
 func (v *uint16Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Uint32erate uint32ny -in=$GOFILE -out=vector.Uint32.go uint32 "Uint32=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type uint32Vector []uint32
 
 func newUint32Vector(n int) *uint32Vector {
 	v := uint32Vector(make([]uint32, n))
 	return &v
-}
-
-func newUint32VectorWithValues(s []uint32) *uint32Vector {
-	v := make([]uint32, len(s))
-	copy(v, s)
-	return (*uint32Vector)(&v)
 }
 
 func (v *uint32Vector) Set(idx int, i interface{}) {
@@ -175,7 +160,7 @@ func (v *uint32Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *uint32Vector) Append(i interface{}) {
-	*v = append(*v, i.(uint32))
+	(*v) = append((*v), i.(uint32))
 }
 
 func (v *uint32Vector) At(i int) interface{} {
@@ -187,7 +172,7 @@ func (v *uint32Vector) PointerAt(i int) interface{} {
 }
 
 func (v *uint32Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *uint32Vector) CopyAt(i int) interface{} {
@@ -205,7 +190,7 @@ func (v *uint32Vector) Type() FieldType {
 }
 
 func (v *uint32Vector) Extend(i int) {
-	*v = append(*v, make([]uint32, i)...)
+	(*v) = append((*v), make([]uint32, i)...)
 }
 
 func (v *uint32Vector) Insert(i int, val interface{}) {
@@ -222,20 +207,16 @@ func (v *uint32Vector) Insert(i int, val interface{}) {
 }
 
 func (v *uint32Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Uint64erate uint64ny -in=$GOFILE -out=vector.Uint64.go uint64 "Uint64=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type uint64Vector []uint64
 
 func newUint64Vector(n int) *uint64Vector {
 	v := uint64Vector(make([]uint64, n))
 	return &v
-}
-
-func newUint64VectorWithValues(s []uint64) *uint64Vector {
-	v := make([]uint64, len(s))
-	copy(v, s)
-	return (*uint64Vector)(&v)
 }
 
 func (v *uint64Vector) Set(idx int, i interface{}) {
@@ -247,7 +228,7 @@ func (v *uint64Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *uint64Vector) Append(i interface{}) {
-	*v = append(*v, i.(uint64))
+	(*v) = append((*v), i.(uint64))
 }
 
 func (v *uint64Vector) At(i int) interface{} {
@@ -259,7 +240,7 @@ func (v *uint64Vector) PointerAt(i int) interface{} {
 }
 
 func (v *uint64Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *uint64Vector) CopyAt(i int) interface{} {
@@ -277,7 +258,7 @@ func (v *uint64Vector) Type() FieldType {
 }
 
 func (v *uint64Vector) Extend(i int) {
-	*v = append(*v, make([]uint64, i)...)
+	(*v) = append((*v), make([]uint64, i)...)
 }
 
 func (v *uint64Vector) Insert(i int, val interface{}) {
@@ -294,20 +275,16 @@ func (v *uint64Vector) Insert(i int, val interface{}) {
 }
 
 func (v *uint64Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Int8erate int8ny -in=$GOFILE -out=vector.Int8.go int8 "Int8=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type int8Vector []int8
 
 func newInt8Vector(n int) *int8Vector {
 	v := int8Vector(make([]int8, n))
 	return &v
-}
-
-func newInt8VectorWithValues(s []int8) *int8Vector {
-	v := make([]int8, len(s))
-	copy(v, s)
-	return (*int8Vector)(&v)
 }
 
 func (v *int8Vector) Set(idx int, i interface{}) {
@@ -319,7 +296,7 @@ func (v *int8Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *int8Vector) Append(i interface{}) {
-	*v = append(*v, i.(int8))
+	(*v) = append((*v), i.(int8))
 }
 
 func (v *int8Vector) At(i int) interface{} {
@@ -331,7 +308,7 @@ func (v *int8Vector) PointerAt(i int) interface{} {
 }
 
 func (v *int8Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *int8Vector) CopyAt(i int) interface{} {
@@ -349,7 +326,7 @@ func (v *int8Vector) Type() FieldType {
 }
 
 func (v *int8Vector) Extend(i int) {
-	*v = append(*v, make([]int8, i)...)
+	(*v) = append((*v), make([]int8, i)...)
 }
 
 func (v *int8Vector) Insert(i int, val interface{}) {
@@ -366,20 +343,16 @@ func (v *int8Vector) Insert(i int, val interface{}) {
 }
 
 func (v *int8Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Int16erate int16ny -in=$GOFILE -out=vector.Int16.go int16 "Int16=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type int16Vector []int16
 
 func newInt16Vector(n int) *int16Vector {
 	v := int16Vector(make([]int16, n))
 	return &v
-}
-
-func newInt16VectorWithValues(s []int16) *int16Vector {
-	v := make([]int16, len(s))
-	copy(v, s)
-	return (*int16Vector)(&v)
 }
 
 func (v *int16Vector) Set(idx int, i interface{}) {
@@ -391,7 +364,7 @@ func (v *int16Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *int16Vector) Append(i interface{}) {
-	*v = append(*v, i.(int16))
+	(*v) = append((*v), i.(int16))
 }
 
 func (v *int16Vector) At(i int) interface{} {
@@ -403,7 +376,7 @@ func (v *int16Vector) PointerAt(i int) interface{} {
 }
 
 func (v *int16Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *int16Vector) CopyAt(i int) interface{} {
@@ -421,7 +394,7 @@ func (v *int16Vector) Type() FieldType {
 }
 
 func (v *int16Vector) Extend(i int) {
-	*v = append(*v, make([]int16, i)...)
+	(*v) = append((*v), make([]int16, i)...)
 }
 
 func (v *int16Vector) Insert(i int, val interface{}) {
@@ -438,20 +411,16 @@ func (v *int16Vector) Insert(i int, val interface{}) {
 }
 
 func (v *int16Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Int32erate int32ny -in=$GOFILE -out=vector.Int32.go int32 "Int32=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type int32Vector []int32
 
 func newInt32Vector(n int) *int32Vector {
 	v := int32Vector(make([]int32, n))
 	return &v
-}
-
-func newInt32VectorWithValues(s []int32) *int32Vector {
-	v := make([]int32, len(s))
-	copy(v, s)
-	return (*int32Vector)(&v)
 }
 
 func (v *int32Vector) Set(idx int, i interface{}) {
@@ -463,7 +432,7 @@ func (v *int32Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *int32Vector) Append(i interface{}) {
-	*v = append(*v, i.(int32))
+	(*v) = append((*v), i.(int32))
 }
 
 func (v *int32Vector) At(i int) interface{} {
@@ -475,7 +444,7 @@ func (v *int32Vector) PointerAt(i int) interface{} {
 }
 
 func (v *int32Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *int32Vector) CopyAt(i int) interface{} {
@@ -493,7 +462,7 @@ func (v *int32Vector) Type() FieldType {
 }
 
 func (v *int32Vector) Extend(i int) {
-	*v = append(*v, make([]int32, i)...)
+	(*v) = append((*v), make([]int32, i)...)
 }
 
 func (v *int32Vector) Insert(i int, val interface{}) {
@@ -510,20 +479,16 @@ func (v *int32Vector) Insert(i int, val interface{}) {
 }
 
 func (v *int32Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Int64erate int64ny -in=$GOFILE -out=vector.Int64.go int64 "Int64=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type int64Vector []int64
 
 func newInt64Vector(n int) *int64Vector {
 	v := int64Vector(make([]int64, n))
 	return &v
-}
-
-func newInt64VectorWithValues(s []int64) *int64Vector {
-	v := make([]int64, len(s))
-	copy(v, s)
-	return (*int64Vector)(&v)
 }
 
 func (v *int64Vector) Set(idx int, i interface{}) {
@@ -535,7 +500,7 @@ func (v *int64Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *int64Vector) Append(i interface{}) {
-	*v = append(*v, i.(int64))
+	(*v) = append((*v), i.(int64))
 }
 
 func (v *int64Vector) At(i int) interface{} {
@@ -547,7 +512,7 @@ func (v *int64Vector) PointerAt(i int) interface{} {
 }
 
 func (v *int64Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *int64Vector) CopyAt(i int) interface{} {
@@ -565,7 +530,7 @@ func (v *int64Vector) Type() FieldType {
 }
 
 func (v *int64Vector) Extend(i int) {
-	*v = append(*v, make([]int64, i)...)
+	(*v) = append((*v), make([]int64, i)...)
 }
 
 func (v *int64Vector) Insert(i int, val interface{}) {
@@ -582,20 +547,16 @@ func (v *int64Vector) Insert(i int, val interface{}) {
 }
 
 func (v *int64Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Float32erate float32ny -in=$GOFILE -out=vector.Float32.go float32 "Float32=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type float32Vector []float32
 
 func newFloat32Vector(n int) *float32Vector {
 	v := float32Vector(make([]float32, n))
 	return &v
-}
-
-func newFloat32VectorWithValues(s []float32) *float32Vector {
-	v := make([]float32, len(s))
-	copy(v, s)
-	return (*float32Vector)(&v)
 }
 
 func (v *float32Vector) Set(idx int, i interface{}) {
@@ -607,7 +568,7 @@ func (v *float32Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *float32Vector) Append(i interface{}) {
-	*v = append(*v, i.(float32))
+	(*v) = append((*v), i.(float32))
 }
 
 func (v *float32Vector) At(i int) interface{} {
@@ -619,7 +580,7 @@ func (v *float32Vector) PointerAt(i int) interface{} {
 }
 
 func (v *float32Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *float32Vector) CopyAt(i int) interface{} {
@@ -637,7 +598,7 @@ func (v *float32Vector) Type() FieldType {
 }
 
 func (v *float32Vector) Extend(i int) {
-	*v = append(*v, make([]float32, i)...)
+	(*v) = append((*v), make([]float32, i)...)
 }
 
 func (v *float32Vector) Insert(i int, val interface{}) {
@@ -654,20 +615,16 @@ func (v *float32Vector) Insert(i int, val interface{}) {
 }
 
 func (v *float32Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Float64erate float64ny -in=$GOFILE -out=vector.Float64.go float64 "Float64=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type float64Vector []float64
 
 func newFloat64Vector(n int) *float64Vector {
 	v := float64Vector(make([]float64, n))
 	return &v
-}
-
-func newFloat64VectorWithValues(s []float64) *float64Vector {
-	v := make([]float64, len(s))
-	copy(v, s)
-	return (*float64Vector)(&v)
 }
 
 func (v *float64Vector) Set(idx int, i interface{}) {
@@ -679,7 +636,7 @@ func (v *float64Vector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *float64Vector) Append(i interface{}) {
-	*v = append(*v, i.(float64))
+	(*v) = append((*v), i.(float64))
 }
 
 func (v *float64Vector) At(i int) interface{} {
@@ -691,7 +648,7 @@ func (v *float64Vector) PointerAt(i int) interface{} {
 }
 
 func (v *float64Vector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *float64Vector) CopyAt(i int) interface{} {
@@ -709,7 +666,7 @@ func (v *float64Vector) Type() FieldType {
 }
 
 func (v *float64Vector) Extend(i int) {
-	*v = append(*v, make([]float64, i)...)
+	(*v) = append((*v), make([]float64, i)...)
 }
 
 func (v *float64Vector) Insert(i int, val interface{}) {
@@ -726,20 +683,16 @@ func (v *float64Vector) Insert(i int, val interface{}) {
 }
 
 func (v *float64Vector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Stringerate stringny -in=$GOFILE -out=vector.String.go string "String=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type stringVector []string
 
 func newStringVector(n int) *stringVector {
 	v := stringVector(make([]string, n))
 	return &v
-}
-
-func newStringVectorWithValues(s []string) *stringVector {
-	v := make([]string, len(s))
-	copy(v, s)
-	return (*stringVector)(&v)
 }
 
 func (v *stringVector) Set(idx int, i interface{}) {
@@ -751,7 +704,7 @@ func (v *stringVector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *stringVector) Append(i interface{}) {
-	*v = append(*v, i.(string))
+	(*v) = append((*v), i.(string))
 }
 
 func (v *stringVector) At(i int) interface{} {
@@ -763,7 +716,7 @@ func (v *stringVector) PointerAt(i int) interface{} {
 }
 
 func (v *stringVector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *stringVector) CopyAt(i int) interface{} {
@@ -781,7 +734,7 @@ func (v *stringVector) Type() FieldType {
 }
 
 func (v *stringVector) Extend(i int) {
-	*v = append(*v, make([]string, i)...)
+	(*v) = append((*v), make([]string, i)...)
 }
 
 func (v *stringVector) Insert(i int, val interface{}) {
@@ -798,20 +751,16 @@ func (v *stringVector) Insert(i int, val interface{}) {
 }
 
 func (v *stringVector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:Boolerate boolny -in=$GOFILE -out=vector.Bool.go bool "Bool=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type boolVector []bool
 
 func newBoolVector(n int) *boolVector {
 	v := boolVector(make([]bool, n))
 	return &v
-}
-
-func newBoolVectorWithValues(s []bool) *boolVector {
-	v := make([]bool, len(s))
-	copy(v, s)
-	return (*boolVector)(&v)
 }
 
 func (v *boolVector) Set(idx int, i interface{}) {
@@ -823,7 +772,7 @@ func (v *boolVector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *boolVector) Append(i interface{}) {
-	*v = append(*v, i.(bool))
+	(*v) = append((*v), i.(bool))
 }
 
 func (v *boolVector) At(i int) interface{} {
@@ -835,7 +784,7 @@ func (v *boolVector) PointerAt(i int) interface{} {
 }
 
 func (v *boolVector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *boolVector) CopyAt(i int) interface{} {
@@ -853,7 +802,7 @@ func (v *boolVector) Type() FieldType {
 }
 
 func (v *boolVector) Extend(i int) {
-	*v = append(*v, make([]bool, i)...)
+	(*v) = append((*v), make([]bool, i)...)
 }
 
 func (v *boolVector) Insert(i int, val interface{}) {
@@ -870,20 +819,16 @@ func (v *boolVector) Insert(i int, val interface{}) {
 }
 
 func (v *boolVector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }
+
+//go:TimeTimeerate timeTimeny -in=$GOFILE -out=vector.TimeTime.go time.Time "TimeTime=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
 
 type timeTimeVector []time.Time
 
 func newTimeTimeVector(n int) *timeTimeVector {
 	v := timeTimeVector(make([]time.Time, n))
 	return &v
-}
-
-func newTimeTimeVectorWithValues(s []time.Time) *timeTimeVector {
-	v := make([]time.Time, len(s))
-	copy(v, s)
-	return (*timeTimeVector)(&v)
 }
 
 func (v *timeTimeVector) Set(idx int, i interface{}) {
@@ -895,7 +840,7 @@ func (v *timeTimeVector) SetConcrete(idx int, i interface{}) {
 }
 
 func (v *timeTimeVector) Append(i interface{}) {
-	*v = append(*v, i.(time.Time))
+	(*v) = append((*v), i.(time.Time))
 }
 
 func (v *timeTimeVector) At(i int) interface{} {
@@ -907,7 +852,7 @@ func (v *timeTimeVector) PointerAt(i int) interface{} {
 }
 
 func (v *timeTimeVector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *timeTimeVector) CopyAt(i int) interface{} {
@@ -925,7 +870,7 @@ func (v *timeTimeVector) Type() FieldType {
 }
 
 func (v *timeTimeVector) Extend(i int) {
-	*v = append(*v, make([]time.Time, i)...)
+	(*v) = append((*v), make([]time.Time, i)...)
 }
 
 func (v *timeTimeVector) Insert(i int, val interface{}) {
@@ -942,77 +887,5 @@ func (v *timeTimeVector) Insert(i int, val interface{}) {
 }
 
 func (v *timeTimeVector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
-}
-
-type jsonRawMessageVector []json.RawMessage
-
-func newJsonRawMessageVector(n int) *jsonRawMessageVector {
-	v := jsonRawMessageVector(make([]json.RawMessage, n))
-	return &v
-}
-
-func newJsonRawMessageVectorWithValues(s []json.RawMessage) *jsonRawMessageVector {
-	v := make([]json.RawMessage, len(s))
-	copy(v, s)
-	return (*jsonRawMessageVector)(&v)
-}
-
-func (v *jsonRawMessageVector) Set(idx int, i interface{}) {
-	(*v)[idx] = i.(json.RawMessage)
-}
-
-func (v *jsonRawMessageVector) SetConcrete(idx int, i interface{}) {
-	v.Set(idx, i)
-}
-
-func (v *jsonRawMessageVector) Append(i interface{}) {
-	*v = append(*v, i.(json.RawMessage))
-}
-
-func (v *jsonRawMessageVector) At(i int) interface{} {
-	return (*v)[i]
-}
-
-func (v *jsonRawMessageVector) PointerAt(i int) interface{} {
-	return &(*v)[i]
-}
-
-func (v *jsonRawMessageVector) Len() int {
-	return len(*v)
-}
-
-func (v *jsonRawMessageVector) CopyAt(i int) interface{} {
-	var g json.RawMessage
-	g = (*v)[i]
-	return g
-}
-
-func (v *jsonRawMessageVector) ConcreteAt(i int) (interface{}, bool) {
-	return v.At(i), true
-}
-
-func (v *jsonRawMessageVector) Type() FieldType {
-	return vectorFieldType(v)
-}
-
-func (v *jsonRawMessageVector) Extend(i int) {
-	*v = append(*v, make([]json.RawMessage, i)...)
-}
-
-func (v *jsonRawMessageVector) Insert(i int, val interface{}) {
-	switch {
-	case i < v.Len():
-		v.Extend(1)
-		copy((*v)[i+1:], (*v)[i:])
-		v.Set(i, val)
-	case i == v.Len():
-		v.Append(val)
-	case i > v.Len():
-		panic("Invalid index; vector length should be greater or equal to that index")
-	}
-}
-
-func (v *jsonRawMessageVector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -66,7 +66,7 @@ func (c *restClient) Fetch(ctx context.Context, path string, params string) ([]b
 	if resp.StatusCode != 200 {
 		return nil, errors.New(resp.Status)
 	}
-	responseData, err := io.ReadAll(resp.Body)
+	responseData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

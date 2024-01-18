@@ -1,16 +1,12 @@
 package data
 
+//go:generate genny -in=$GOFILE -out=nullable_vector.gen.go gen "gen=uint8,uint16,uint32,uint64,int8,int16,int32,int64,float32,float64,string,bool,time.Time"
+
 type nullablegenVector []*gen
 
 func newNullablegenVector(n int) *nullablegenVector {
 	v := nullablegenVector(make([]*gen, n))
 	return &v
-}
-
-func newNullablegenVectorWithValues(s []*gen) *nullablegenVector {
-	v := make([]*gen, len(s))
-	copy(v, s)
-	return (*nullablegenVector)(&v)
 }
 
 func (v *nullablegenVector) Set(idx int, i interface{}) {
@@ -28,10 +24,10 @@ func (v *nullablegenVector) SetConcrete(idx int, i interface{}) {
 
 func (v *nullablegenVector) Append(i interface{}) {
 	if i == nil {
-		*v = append(*v, nil)
+		(*v) = append((*v), nil)
 		return
 	}
-	*v = append(*v, i.(*gen))
+	(*v) = append((*v), i.(*gen))
 }
 
 func (v *nullablegenVector) At(i int) interface{} {
@@ -63,7 +59,7 @@ func (v *nullablegenVector) PointerAt(i int) interface{} {
 }
 
 func (v *nullablegenVector) Len() int {
-	return len(*v)
+	return len((*v))
 }
 
 func (v *nullablegenVector) Type() FieldType {
@@ -71,7 +67,7 @@ func (v *nullablegenVector) Type() FieldType {
 }
 
 func (v *nullablegenVector) Extend(i int) {
-	*v = append(*v, make([]*gen, i)...)
+	(*v) = append((*v), make([]*gen, i)...)
 }
 
 func (v *nullablegenVector) Insert(i int, val interface{}) {
@@ -88,5 +84,5 @@ func (v *nullablegenVector) Insert(i int, val interface{}) {
 }
 
 func (v *nullablegenVector) Delete(i int) {
-	*v = append((*v)[:i], (*v)[i+1:]...)
+	(*v) = append((*v)[:i], (*v)[i+1:]...)
 }

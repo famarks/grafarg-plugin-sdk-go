@@ -1,7 +1,6 @@
 package data
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -14,19 +13,17 @@ import (
 // See NewField() for supported types.
 //
 // The slice data in the Field is a not exported, so methods on the Field are used to to manipulate its data.
-//
-//swagger:model
 type Field struct {
 	// Name is default identifier of the field. The name does not have to be unique, but the combination
 	// of name and Labels should be unique for proper behavior in all situations.
-	Name string `json:"name,omitempty"`
+	Name string
 
 	// Labels is an optional set of key=value pairs that in addition to the name, should uniquely
 	// identify a Field within a Frame.
-	Labels Labels `json:"labels,omitempty"`
+	Labels Labels
 
 	// Config is optional display configuration information for Grafarg
-	Config *FieldConfig `json:"config,omitempty"`
+	Config *FieldConfig
 
 	// vector is the unexported values. it is unexported so we can change the underlying structure without
 	// major breaking changes.
@@ -39,28 +36,13 @@ type Fields []*Field
 // NewField returns a instance of *Field. Supported types for values are:
 //
 // Integers:
-//
-//	[]int8, []*int8, []int16, []*int16, []int32, []*int32, []int64, []*int64
-//
+//  []int8, []*int8, []int16, []*int16, []int32, []*int32, []int64, []*int64
 // Unsigned Integers:
-//
-//	[]uint8, []*uint8, []uint16, []*uint16, []uint32, []*uint32, []uint64, []*uint64
-//
+//  []uint8, []*uint8, []uint16, []*uint16, []uint32, []*uint32, []uint64, []*uint64
 // Floats:
-//
-//	[]float32, []*float32, []float64, []*float64
-//
+//  []float32, []*float32, []float64, []*float64
 // String, Bool, and Time:
-//
-//	[]string, []*string, []bool, []*bool, []time.Time, and []*time.Time.
-//
-// JSON:
-//
-//	[]json.RawMessage, []*json.RawMessage
-//
-// Enum:
-//
-//	[]data.EnumItemIndex, []*data.EnumItemIndex
+//  []string, []*string, []bool, []*bool, []time.Time, and []*time.Time.
 //
 // If an unsupported values type is passed, NewField will panic.
 // nolint:gocyclo
@@ -68,67 +50,137 @@ func NewField(name string, labels Labels, values interface{}) *Field {
 	var vec vector
 	switch v := values.(type) {
 	case []int8:
-		vec = newInt8VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*int8:
-		vec = newNullableInt8VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []int16:
-		vec = newInt16VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*int16:
-		vec = newNullableInt16VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []int32:
-		vec = newInt32VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*int32:
-		vec = newNullableInt32VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []int64:
-		vec = newInt64VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*int64:
-		vec = newNullableInt64VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []uint8:
-		vec = newUint8VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*uint8:
-		vec = newNullableUint8VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []uint16:
-		vec = newUint16VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*uint16:
-		vec = newNullableUint16VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []uint32:
-		vec = newUint32VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*uint32:
-		vec = newNullableUint32VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []uint64:
-		vec = newUint64VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*uint64:
-		vec = newNullableUint64VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []float32:
-		vec = newFloat32VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*float32:
-		vec = newNullableFloat32VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []float64:
-		vec = newFloat64VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*float64:
-		vec = newNullableFloat64VectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []string:
-		vec = newStringVectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*string:
-		vec = newNullableStringVectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []bool:
-		vec = newBoolVectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*bool:
-		vec = newNullableBoolVectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []time.Time:
-		vec = newTimeTimeVectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	case []*time.Time:
-		vec = newNullableTimeTimeVectorWithValues(v)
-	case []json.RawMessage:
-		vec = newJsonRawMessageVectorWithValues(v)
-	case []*json.RawMessage:
-		vec = newNullableJsonRawMessageVectorWithValues(v)
-	case []EnumItemIndex:
-		vec = newEnumVectorWithValues(v)
-	case []*EnumItemIndex:
-		vec = newNullableEnumVectorWithValues(v)
+		vec = newVector(v, len(v))
+		for i := 0; i < len(v); i++ {
+			vec.Set(i, v[i])
+		}
 	default:
-		panic(fmt.Errorf("field '%s' specified with unsupported type %T", name, v))
+		panic(fmt.Errorf("unsupported field type %T", v))
 	}
 
 	return &Field{
@@ -174,11 +226,7 @@ func (f *Field) At(idx int) interface{} {
 }
 
 // Len returns the number of elements in the Field.
-// It will return 0 if the field is nil.
 func (f *Field) Len() int {
-	if f == nil || f.vector == nil {
-		return 0
-	}
 	return f.vector.Len()
 }
 
@@ -372,132 +420,7 @@ func (f *Field) FloatAt(idx int) (float64, error) {
 		if t == nil {
 			return math.NaN(), nil
 		}
-		return float64(t.UnixNano() / int64(time.Millisecond)), nil
+		return float64(f.At(idx).(*time.Time).UnixNano() / int64(time.Millisecond)), nil
 	}
 	return 0, fmt.Errorf("unsupported field type %T", f.Type())
-}
-
-// NullableFloatAt it is similar to FloatAt but returns a *float64 at the specified index idx for all supported Field types.
-// It will panic if idx is out of range.
-// nolint:gocyclo
-func (f *Field) NullableFloatAt(idx int) (*float64, error) {
-	if !f.Nullable() {
-		fv, err := f.FloatAt(idx)
-		if err != nil {
-			return nil, err
-		}
-		return &fv, nil
-	}
-
-	switch f.Type() {
-	case FieldTypeNullableInt8:
-		iv := f.At(idx).(*int8)
-		if iv == nil {
-			return nil, nil
-		}
-		f := float64(*iv)
-		return &f, nil
-
-	case FieldTypeNullableInt16:
-		iv := f.At(idx).(*int16)
-		if iv == nil {
-			return nil, nil
-		}
-		f := float64(*iv)
-		return &f, nil
-
-	case FieldTypeNullableInt32:
-		iv := f.At(idx).(*int32)
-		if iv == nil {
-			return nil, nil
-		}
-		f := float64(*iv)
-		return &f, nil
-
-	case FieldTypeNullableInt64:
-		iv := f.At(idx).(*int64)
-		if iv == nil {
-			return nil, nil
-		}
-		f := float64(*iv)
-		return &f, nil
-
-	case FieldTypeNullableUint8:
-		uiv := f.At(idx).(*uint8)
-		if uiv == nil {
-			return nil, nil
-		}
-		f := float64(*uiv)
-		return &f, nil
-
-	case FieldTypeNullableUint16:
-		uiv := f.At(idx).(*uint16)
-		if uiv == nil {
-			return nil, nil
-		}
-		f := float64(*uiv)
-		return &f, nil
-
-	case FieldTypeNullableUint32:
-		uiv := f.At(idx).(*uint32)
-		if uiv == nil {
-			return nil, nil
-		}
-		f := float64(*uiv)
-		return &f, nil
-
-	case FieldTypeNullableUint64:
-		uiv := f.At(idx).(*uint64)
-		if uiv == nil {
-			return nil, nil
-		}
-		f := float64(*uiv)
-		return &f, nil
-
-	case FieldTypeNullableFloat32:
-		fv := f.At(idx).(*float32)
-		if fv == nil {
-			return nil, nil
-		}
-		f := float64(*fv)
-		return &f, nil
-
-	case FieldTypeNullableFloat64:
-		fv := f.At(idx).(*float64)
-		if fv == nil {
-			return nil, nil
-		}
-		return fv, nil
-
-	case FieldTypeNullableString:
-		s := f.At(idx).(*string)
-		if s == nil {
-			return nil, nil
-		}
-		ft, err := strconv.ParseFloat(*s, 64)
-		if err != nil {
-			return nil, err
-		}
-		return &ft, nil
-
-	case FieldTypeNullableBool:
-		b := f.At(idx).(*bool)
-		if b == nil {
-			return nil, nil
-		}
-		f := 0.0
-		if *b {
-			f = 1.0
-		}
-		return &f, nil
-
-	case FieldTypeNullableTime:
-		t := f.At(idx).(*time.Time)
-		if t == nil {
-			return nil, nil
-		}
-		f := float64(t.UnixNano() / int64(time.Millisecond))
-		return &f, nil
-	}
-	return nil, fmt.Errorf("unsupported field type %T", f.Type())
 }

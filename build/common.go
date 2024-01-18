@@ -2,29 +2,19 @@ package build
 
 import (
 	"bufio"
-	"embed"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 
-	"github.com/famarks/grafarg-plugin-sdk-go/build/utils"
-	"github.com/famarks/grafarg-plugin-sdk-go/experimental/e2e"
-	ca "github.com/famarks/grafarg-plugin-sdk-go/experimental/e2e/certificate_authority"
-	"github.com/famarks/grafarg-plugin-sdk-go/experimental/e2e/config"
-	"github.com/famarks/grafarg-plugin-sdk-go/experimental/e2e/fixture"
-	"github.com/famarks/grafarg-plugin-sdk-go/experimental/e2e/storage"
-	"github.com/famarks/grafarg-plugin-sdk-go/internal"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
-	bra "github.com/unknwon/bra/cmd"
-	"github.com/urfave/cli"
 )
-
-var defaultOutputBinaryPath = "dist"
-var defaultPluginJSONPath = "src"
 
 // Callbacks give you a way to run custom behavior when things happen
 var beforeBuild = func(cfg Config) (Config, error) {
@@ -39,9 +29,9 @@ func SetBeforeBuildCallback(cb BeforeBuildCallback) error {
 
 var exname string
 
-func getExecutableName(os string, arch string, pluginJSONPath string) (string, error) {
+func getExecutableName(os string, arch string) (string, error) {
 	if exname == "" {
-		exename, err := internal.GetExecutableFromPluginJSON(pluginJSONPath)
+		exename, err := getExecutableFromPluginJSON()
 		if err != nil {
 			return "", err
 		}
@@ -56,17 +46,32 @@ func getExecutableName(os string, arch string, pluginJSONPath string) (string, e
 	return exeName, nil
 }
 
+func getExecutableFromPluginJSON() (string, error) {
+	byteValue, err := ioutil.ReadFile(path.Join("src", "plugin.json"))
+	if err != nil {
+		return "", err
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(byteValue, &result)
+	if err != nil {
+		return "", err
+	}
+	executable := result["executable"]
+	name, ok := executable.(string)
+	if !ok || name == "" {
+		return "", fmt.Errorf("plugin.json is missing an executable name")
+	}
+	return name, nil
+}
+
 func buildBackend(cfg Config) error {
 	cfg, err := beforeBuild(cfg)
 	if err != nil {
 		return err
 	}
 
-	pluginJSONPath := defaultPluginJSONPath
-	if cfg.PluginJSONPath != "" {
-		pluginJSONPath = cfg.PluginJSONPath
-	}
-	exeName, err := getExecutableName(cfg.OS, cfg.Arch, pluginJSONPath)
+	exeName, err := getExecutableName(cfg.OS, cfg.Arch)
 	if err != nil {
 		return err
 	}
@@ -86,42 +91,17 @@ func buildBackend(cfg Config) error {
 		ldFlags = fmt.Sprintf("-w -s%s%s", prefix, ldFlags)
 	}
 
-	outputPath := cfg.OutputBinaryPath
-	if outputPath == "" {
-		outputPath = defaultOutputBinaryPath
-	}
 	args := []string{
-		"build", "-o", filepath.Join(outputPath, exeName),
+		"build", "-o", filepath.Join("dist", exeName),
 	}
-
-	info := getBuildInfoFromEnvironment()
-	version, err := internal.GetStringValueFromJSON("package.json", "version")
-	if err == nil && len(version) > 0 {
-		info.Version = version
+	if ldFlags != "" {
+		args = append(args, "-ldflags", ldFlags)
 	}
-
-	flags := make(map[string]string, 10)
-	info.appendFlags(flags)
-
-	if cfg.CustomVars != nil {
-		for k, v := range cfg.CustomVars {
-			flags[k] = v
-		}
-	}
-
-	for k, v := range flags {
-		ldFlags = fmt.Sprintf("%s -X '%s=%s'", ldFlags, k, v)
-	}
-	args = append(args, "-ldflags", ldFlags)
 
 	if cfg.EnableDebug {
 		args = append(args, "-gcflags=all=-N -l")
 	}
-	rootPackage := "./pkg"
-	if cfg.RootPackagePath != "" {
-		rootPackage = cfg.RootPackagePath
-	}
-	args = append(args, rootPackage)
+	args = append(args, "./pkg")
 
 	cfg.Env["GOARCH"] = cfg.Arch
 	cfg.Env["GOOS"] = cfg.OS
@@ -170,40 +150,6 @@ func (Build) Darwin() error {
 	return buildBackend(newBuildConfig("darwin", "amd64"))
 }
 
-// DarwinARM64 builds the back-end plugin for OSX on ARM (M1).
-func (Build) DarwinARM64() error {
-	return buildBackend(newBuildConfig("darwin", "arm64"))
-}
-
-// GenerateManifestFile generates a manifest file for plugin submissions
-func (Build) GenerateManifestFile() error {
-	config := Config{}
-	config, err := beforeBuild(config)
-	if err != nil {
-		return err
-	}
-	outputPath := config.OutputBinaryPath
-	if outputPath == "" {
-		outputPath = defaultOutputBinaryPath
-	}
-	manifestContent, err := utils.GenerateManifest()
-	if err != nil {
-		return err
-	}
-
-	manifestFilePath := filepath.Join(outputPath, "go_plugin_build_manifest")
-	err = os.MkdirAll(outputPath, 0755)
-	if err != nil {
-		return err
-	}
-	// #nosec G306 - we need reading permissions for this file
-	err = os.WriteFile(manifestFilePath, []byte(manifestContent), 0755)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Debug builds the debug version for the current platform
 func (Build) Debug() error {
 	cfg := newBuildConfig(runtime.GOOS, runtime.GOARCH)
@@ -213,14 +159,6 @@ func (Build) Debug() error {
 
 // Backend build a production build for the current platform
 func (Build) Backend() error {
-	// The M1 platform detection is kinda flakey, so we will just build both
-	if runtime.GOOS == "darwin" {
-		err := buildBackend(newBuildConfig("darwin", "arm64"))
-		if err != nil {
-			return err
-		}
-		return buildBackend(newBuildConfig("darwin", "amd64"))
-	}
 	cfg := newBuildConfig(runtime.GOOS, runtime.GOARCH)
 	return buildBackend(cfg)
 }
@@ -228,69 +166,33 @@ func (Build) Backend() error {
 // BuildAll builds production executables for all supported platforms.
 func BuildAll() { //revive:disable-line
 	b := Build{}
-	mg.Deps(b.Linux, b.Windows, b.Darwin, b.DarwinARM64, b.LinuxARM64, b.LinuxARM, b.GenerateManifestFile)
-}
-
-//go:embed tmpl/*
-var tmpl embed.FS
-
-// ensureWatchConfig creates a default .bra.toml file in the current directory if it doesn't exist.
-func ensureWatchConfig() error {
-	exists, err := utils.Exists(".bra.toml")
-	if err != nil {
-		return err
-	}
-
-	if exists {
-		return nil
-	}
-
-	fmt.Println("No .bra.toml file found. Creating one...")
-	config, err := tmpl.ReadFile("tmpl/bra.toml")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(".bra.toml", config, 0600)
-}
-
-// Watch rebuilds the plugin backend when files change.
-func Watch() error {
-	if err := ensureWatchConfig(); err != nil {
-		return err
-	}
-
-	// this is needed to run `bra run` programmatically
-	app := cli.NewApp()
-	app.Name = "bra"
-	app.Usage = ""
-	app.Action = func(c *cli.Context) error {
-		return bra.Run.Run(c)
-	}
-	return app.Run(os.Args)
+	mg.Deps(b.Linux, b.Windows, b.Darwin, b.LinuxARM64, b.LinuxARM)
 }
 
 // Test runs backend tests.
 func Test() error {
-	return sh.RunV("go", "test", "./pkg/...")
+	if err := sh.RunV("go", "test", "./pkg/..."); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Coverage runs backend tests and makes a coverage report.
 func Coverage() error {
-	// Create a coverage folder if it does not already exist
+	// Create a coverage file if it does not already exist
 	if err := os.MkdirAll(filepath.Join(".", "coverage"), os.ModePerm); err != nil {
 		return err
 	}
 
-	if err := sh.RunV("go", "test", "./pkg/...", "-coverpkg", "./...", "-v", "-cover", "-coverprofile=coverage/backend.out"); err != nil {
+	if err := sh.RunV("go", "test", "./pkg/...", "-v", "-cover", "-coverprofile=coverage/backend.out"); err != nil {
 		return err
 	}
 
-	if err := sh.RunV("go", "tool", "cover", "-func=coverage/backend.out", "-o", "coverage/backend.txt"); err != nil {
+	if err := sh.RunV("go", "tool", "cover", "-html=coverage/backend.out", "-o", "coverage/backend.html"); err != nil {
 		return err
 	}
 
-	return sh.RunV("go", "tool", "cover", "-html=coverage/backend.out", "-o", "coverage/backend.html")
+	return nil
 }
 
 // Lint audits the source style
@@ -300,7 +202,11 @@ func Lint() error {
 
 // Format formats the sources.
 func Format() error {
-	return sh.RunV("gofmt", "-w", ".")
+	if err := sh.RunV("gofmt", "-w", "."); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Clean cleans build artifacts, by deleting the dist directory.
@@ -322,64 +228,10 @@ func Clean() error {
 	return nil
 }
 
-// E2E is a namespace.
-type E2E mg.Namespace
-
-// Append starts the E2E proxy in append mode.
-func (E2E) Append() error {
-	return e2eProxy(e2e.ProxyModeAppend)
-}
-
-// Overwrite starts the E2E proxy in overwrite mode.
-func (E2E) Overwrite() error {
-	return e2eProxy(e2e.ProxyModeOverwrite)
-}
-
-// Replay starts the E2E proxy in replay mode.
-func (E2E) Replay() error {
-	return e2eProxy(e2e.ProxyModeReplay)
-}
-
-// Certificate prints the CA certificate to stdout.
-func (E2E) Certificate() error {
-	cfg, err := config.LoadConfig("proxy.json")
-	if err != nil {
-		return err
-	}
-
-	if cert, _, err := ca.LoadKeyPair(cfg.CAConfig.Cert, cfg.CAConfig.PrivateKey); err == nil {
-		fmt.Print(string(cert))
-		return nil
-	}
-
-	fmt.Print(string(ca.CACertificate))
-	return nil
-}
-
-func e2eProxy(mode e2e.ProxyMode) error {
-	cfg, err := config.LoadConfig("proxy.json")
-	if err != nil {
-		return err
-	}
-	fixtures := make([]*fixture.Fixture, 0)
-	for _, s := range cfg.Storage {
-		switch s.Type {
-		case config.StorageTypeHAR:
-			store := storage.NewHARStorage(s.Path)
-			fixtures = append(fixtures, fixture.NewFixture(store))
-		case config.StorageTypeOpenAPI:
-			store := storage.NewOpenAPIStorage(s.Path)
-			fixtures = append(fixtures, fixture.NewFixture(store))
-		}
-	}
-	proxy := e2e.NewProxy(mode, fixtures, cfg)
-	return proxy.Start()
-}
-
 // checkLinuxPtraceScope verifies that ptrace is configured as required.
 func checkLinuxPtraceScope() error {
 	ptracePath := "/proc/sys/kernel/yama/ptrace_scope"
-	byteValue, err := os.ReadFile(ptracePath)
+	byteValue, err := ioutil.ReadFile(ptracePath)
 	if err != nil {
 		return fmt.Errorf("unable to read ptrace_scope: %w", err)
 	}

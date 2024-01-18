@@ -1,1 +1,0 @@
-Repo Moved to [grafarg/dataplane/docs/contracts](https://github.com/famarks/dataplane/tree/main/docs/contract). View at https://grafarg.github.io/dataplane/contract

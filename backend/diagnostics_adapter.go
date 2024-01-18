@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
-
-	"github.com/famarks/grafarg-plugin-sdk-go/genproto/pluginv2"
 )
 
 // diagnosticsSDKAdapter adapter between low level plugin protocol and SDK interfaces.
@@ -23,7 +22,7 @@ func newDiagnosticsSDKAdapter(metricGatherer prometheus.Gatherer, checkHealthHan
 	}
 }
 
-func (a *diagnosticsSDKAdapter) CollectMetrics(_ context.Context, _ *pluginv2.CollectMetricsRequest) (*pluginv2.CollectMetricsResponse, error) {
+func (a *diagnosticsSDKAdapter) CollectMetrics(ctx context.Context, protoReq *pluginv2.CollectMetricsRequest) (*pluginv2.CollectMetricsResponse, error) {
 	mfs, err := a.metricGatherer.Gather()
 	if err != nil {
 		return nil, err
@@ -46,12 +45,7 @@ func (a *diagnosticsSDKAdapter) CollectMetrics(_ context.Context, _ *pluginv2.Co
 
 func (a *diagnosticsSDKAdapter) CheckHealth(ctx context.Context, protoReq *pluginv2.CheckHealthRequest) (*pluginv2.CheckHealthResponse, error) {
 	if a.checkHealthHandler != nil {
-		ctx = propagateTenantIDIfPresent(ctx)
-		ctx = WithGrafargConfig(ctx, NewGrafargCfg(protoReq.PluginContext.GrafargConfig))
-		parsedReq := FromProto().CheckHealthRequest(protoReq)
-		ctx = withHeaderMiddleware(ctx, parsedReq.GetHTTPHeaders())
-		ctx = withContextualLogAttributes(ctx, parsedReq.PluginContext, endpointCheckHealth)
-		res, err := a.checkHealthHandler.CheckHealth(ctx, parsedReq)
+		res, err := a.checkHealthHandler.CheckHealth(ctx, FromProto().CheckHealthRequest(protoReq))
 		if err != nil {
 			return nil, err
 		}

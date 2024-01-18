@@ -34,11 +34,5 @@ func (a *resourceSDKAdapter) CallResource(protoReq *pluginv2.CallResourceRequest
 		return protoSrv.Send(ToProto().CallResourceResponse(resp))
 	})
 
-	ctx := protoSrv.Context()
-	ctx = propagateTenantIDIfPresent(ctx)
-	ctx = WithGrafargConfig(ctx, NewGrafargCfg(protoReq.PluginContext.GrafargConfig))
-	parsedReq := FromProto().CallResourceRequest(protoReq)
-	ctx = withHeaderMiddleware(ctx, parsedReq.GetHTTPHeaders())
-	ctx = withContextualLogAttributes(ctx, parsedReq.PluginContext, endpointCallResource)
-	return a.callResourceHandler.CallResource(ctx, parsedReq, fn)
+	return a.callResourceHandler.CallResource(protoSrv.Context(), FromProto().CallResourceRequest(protoReq), fn)
 }

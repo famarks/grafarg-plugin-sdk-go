@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/require"
-
 	"github.com/famarks/grafarg-plugin-sdk-go/data"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTimeSeriesSchema(t *testing.T) {
@@ -120,9 +119,7 @@ func TestLongToWide(t *testing.T) {
 				data.NewField(`Values Floats`, data.Labels{"Animal Factor": "sloth"}, []float64{
 					2.0,
 					4.0,
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -167,9 +164,7 @@ func TestLongToWide(t *testing.T) {
 					data.Labels{"Animal Factor": "sloth", "Location": "Central & South America"}, []float64{
 						2.0,
 						4.0,
-					})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+					})),
 			Err: require.NoError,
 		},
 		{
@@ -220,9 +215,7 @@ func TestLongToWide(t *testing.T) {
 				data.NewField(`Values Int64`, data.Labels{"Animal Factor": "sloth"}, []int64{
 					2,
 					4,
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -279,9 +272,7 @@ func TestLongToWide(t *testing.T) {
 				data.NewField(`Values Int64`, data.Labels{"Animal Factor": "sloth", "Location": "Central & South America"}, []int64{
 					2,
 					4,
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -318,9 +309,7 @@ func TestLongToWide(t *testing.T) {
 				data.NewField(`Values Floats`, data.Labels{"Animal Factor": "sloth"}, []*float64{
 					float64Ptr(2.0),
 					float64Ptr(4.0),
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -384,9 +373,7 @@ func TestLongToWide(t *testing.T) {
 					4.0,
 					0.0,
 					6.0,
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 
 			Err: require.NoError,
 		},
@@ -451,9 +438,7 @@ func TestLongToWide(t *testing.T) {
 					float64Ptr(4.0),
 					nil,
 					float64Ptr(6.0),
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -547,9 +532,7 @@ func TestLongToWide(t *testing.T) {
 					-1,
 					6,
 				}),
-			).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+			),
 			Err: require.NoError,
 		},
 		{
@@ -643,9 +626,7 @@ func TestLongToWide(t *testing.T) {
 					int64Ptr(4),
 					int64Ptr(6),
 				}),
-			).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+			),
 			Err: require.NoError,
 		},
 		{
@@ -739,9 +720,7 @@ func TestLongToWide(t *testing.T) {
 					nil,
 					int64Ptr(6),
 				}),
-			).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+			),
 			Err: require.NoError,
 		},
 		{
@@ -835,9 +814,7 @@ func TestLongToWide(t *testing.T) {
 					int64Ptr(-1),
 					int64Ptr(6),
 				}),
-			).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+			),
 			Err: require.NoError,
 		},
 		{
@@ -930,9 +907,7 @@ func TestLongToWide(t *testing.T) {
 					int64Ptr(4),
 					int64Ptr(6),
 				}),
-			).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+			),
 			Err: require.NoError,
 		},
 		{
@@ -1025,9 +1000,7 @@ func TestLongToWide(t *testing.T) {
 					nil,
 					int64Ptr(6.0),
 				}),
-			).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+			),
 			Err: require.NoError,
 		},
 	}
@@ -1085,9 +1058,7 @@ func TestLongToWideBool(t *testing.T) {
 				data.NewField(`Values Floats`, data.Labels{"Enabled Factor": "true"}, []float64{
 					1.0,
 					3.0,
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesWide,
-			}),
+				})),
 			Err: require.NoError,
 		},
 	}
@@ -1144,9 +1115,7 @@ func TestWideToLong(t *testing.T) {
 					"sloth",
 					"cat",
 					"sloth",
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesLong,
-			}),
+				})),
 			Err: require.NoError,
 		},
 
@@ -1193,9 +1162,7 @@ func TestWideToLong(t *testing.T) {
 					"Central & South America",
 					"Florida",
 					"Central & South America",
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesLong,
-			}),
+				})),
 		},
 		{
 			name: "two values, one factor",
@@ -1245,9 +1212,7 @@ func TestWideToLong(t *testing.T) {
 					"sloth",
 					"cat",
 					"sloth",
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesLong,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -1304,9 +1269,7 @@ func TestWideToLong(t *testing.T) {
 					"Central & South America",
 					"Florida",
 					"Central & South America",
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesLong,
-			}),
+				})),
 			Err: require.NoError,
 		},
 		{
@@ -1344,9 +1307,7 @@ func TestWideToLong(t *testing.T) {
 					"sloth",
 					"cat",
 					"sloth",
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesLong,
-			}),
+				})),
 		},
 		{
 			name: "sparse: one value, two factor",
@@ -1433,9 +1394,7 @@ func TestWideToLong(t *testing.T) {
 					"Florida",
 					"",
 					"Central & South America",
-				})).SetMeta(&data.FrameMeta{
-				Type: data.FrameTypeTimeSeriesLong,
-			}),
+				})),
 
 			Err: require.NoError,
 		},
@@ -1479,80 +1438,6 @@ func TestFloatAt(t *testing.T) {
 		floatFrame.Fields[fieldIdx] = data.NewFieldFromFieldType(data.FieldTypeFloat64, field.Len())
 		for i := 0; i < field.Len(); i++ {
 			fv, err := field.FloatAt(i)
-			require.NoError(t, err)
-			floatFrame.Set(fieldIdx, i, fv)
-		}
-	}
-
-	if diff := cmp.Diff(expectedFloatFrame, floatFrame, data.FrameTestCompareOptions()...); diff != "" {
-		t.Errorf("Result mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestNullabelFloatAt(t *testing.T) {
-	mixedFrame := data.NewFrame("",
-		data.NewField("", nil, []*int64{nil, int64Ptr(-5), int64Ptr(5)}),
-		data.NewField("", nil, []*string{nil, stringPtr("-5"), stringPtr("5")}),
-		data.NewField("", nil, []*bool{nil, boolPtr(true), boolPtr(false)}),
-		data.NewField("", nil, []*time.Time{
-			nil,
-			timePtr(time.Date(2020, 1, 2, 3, 4, 0, 0, time.UTC)),
-			timePtr(time.Date(2020, 1, 2, 3, 4, 30, 0, time.UTC)),
-		}),
-		data.NewField("", nil, []*uint64{nil, uint64Ptr(12), uint64Ptr(math.MaxUint64)}),
-	)
-
-	expectedFloatFrame := data.NewFrame("",
-		data.NewField("", nil, []*float64{nil, float64Ptr(-5), float64Ptr(5)}),
-		data.NewField("", nil, []*float64{nil, float64Ptr(-5), float64Ptr(5)}),
-		data.NewField("", nil, []*float64{nil, float64Ptr(1), float64Ptr(0)}),
-		data.NewField("", nil, []*float64{nil, float64Ptr(1577934240000), float64Ptr(1577934270000)}),
-		data.NewField("", nil, []*float64{nil, float64Ptr(12), float64Ptr(1.8446744073709552e+19)}), // Note: loss of precision.
-	)
-
-	floatFrame := data.NewFrame("")
-	floatFrame.Fields = make([]*data.Field, len(mixedFrame.Fields))
-	for fieldIdx, field := range mixedFrame.Fields {
-		floatFrame.Fields[fieldIdx] = data.NewFieldFromFieldType(data.FieldTypeNullableFloat64, field.Len())
-		for i := 0; i < field.Len(); i++ {
-			fv, err := field.NullableFloatAt(i)
-			require.NoError(t, err)
-			floatFrame.Set(fieldIdx, i, fv)
-		}
-	}
-
-	if diff := cmp.Diff(expectedFloatFrame, floatFrame, data.FrameTestCompareOptions()...); diff != "" {
-		t.Errorf("Result mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestNullabelFloatAtFromNonNullables(t *testing.T) {
-	mixedFrame := data.NewFrame("",
-		data.NewField("", nil, []int64{0, -5, 5}),
-		data.NewField("", nil, []string{"0", "-5", "5"}),
-		data.NewField("", nil, []bool{false, true, false}),
-		data.NewField("", nil, []time.Time{
-			time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
-			time.Date(2020, 1, 2, 3, 4, 0, 0, time.UTC),
-			time.Date(2020, 1, 2, 3, 4, 30, 0, time.UTC),
-		}),
-		data.NewField("", nil, []uint64{0, 12, math.MaxUint64}),
-	)
-
-	expectedFloatFrame := data.NewFrame("",
-		data.NewField("", nil, []*float64{float64Ptr(0), float64Ptr(-5), float64Ptr(5)}),
-		data.NewField("", nil, []*float64{float64Ptr(0), float64Ptr(-5), float64Ptr(5)}),
-		data.NewField("", nil, []*float64{float64Ptr(0), float64Ptr(1), float64Ptr(0)}),
-		data.NewField("", nil, []*float64{float64Ptr(-6.829751778871e+12), float64Ptr(1577934240000), float64Ptr(1577934270000)}),
-		data.NewField("", nil, []*float64{float64Ptr(0), float64Ptr(12), float64Ptr(1.8446744073709552e+19)}), // Note: loss of precision.
-	)
-
-	floatFrame := data.NewFrame("")
-	floatFrame.Fields = make([]*data.Field, len(mixedFrame.Fields))
-	for fieldIdx, field := range mixedFrame.Fields {
-		floatFrame.Fields[fieldIdx] = data.NewFieldFromFieldType(data.FieldTypeNullableFloat64, field.Len())
-		for i := 0; i < field.Len(); i++ {
-			fv, err := field.NullableFloatAt(i)
 			require.NoError(t, err)
 			floatFrame.Set(fieldIdx, i, fv)
 		}

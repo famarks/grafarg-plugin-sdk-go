@@ -9,8 +9,6 @@ import (
 )
 
 // TimeSeriesType represents the type of time series the schema can be treated as (if any).
-//
-// Deprecated: this type will be replaced with FrameType and FrameType#IsTimeSeries()
 type TimeSeriesType int
 
 // TODO: Create and link to Grafarg documentation on Long vs Wide
@@ -62,18 +60,16 @@ func (t TimeSeriesType) String() string {
 
 // TimeSeriesSchema returns the TimeSeriesSchema of the frame. The TimeSeriesSchema's Type
 // value will be TimeSeriesNot if it is not a time series.
-// Deprecated
-func (f *Frame) TimeSeriesSchema() TimeSeriesSchema {
-	var tsSchema TimeSeriesSchema
+func (f *Frame) TimeSeriesSchema() (tsSchema TimeSeriesSchema) {
 	tsSchema.Type = TimeSeriesTypeNot
 	if f.Fields == nil || len(f.Fields) == 0 {
-		return tsSchema
+		return
 	}
 
 	nonValueIndices := make(map[int]struct{})
 	timeIndices := f.TypeIndices(FieldTypeTime, FieldTypeNullableTime)
 	if len(timeIndices) == 0 {
-		return tsSchema
+		return
 	}
 	tsSchema.TimeIndex = timeIndices[0]
 	nonValueIndices[tsSchema.TimeIndex] = struct{}{}
@@ -93,12 +89,12 @@ func (f *Frame) TimeSeriesSchema() TimeSeriesSchema {
 	}
 
 	if len(tsSchema.ValueIndices) == 0 {
-		return tsSchema
+		return
 	}
 
 	if len(tsSchema.FactorIndices) == 0 {
 		tsSchema.Type = TimeSeriesTypeWide
-		return tsSchema
+		return
 	}
 	tsSchema.Type = TimeSeriesTypeLong
 	return tsSchema
@@ -188,7 +184,7 @@ func GetMissing(fillMissing *FillMissing, field *Field, previousRowIdx int) (int
 	return fillVal, nil
 }
 
-// LongToWide converts a Long formatted time series Frame to a Wide format (see TimeSeriesType for descriptions).
+// LongToWide converts a Long formated time series Frame to a Wide format (see TimeSeriesType for descriptions).
 // The first Field of type time.Time or *time.Time will be the time index for the series,
 // and will be the first field of the outputted longFrame.
 //
@@ -200,7 +196,7 @@ func GetMissing(fillMissing *FillMissing, field *Field, previousRowIdx int) (int
 // Finally, the Meta field of the result Wide Frame is pointing to the reference of the Meta field of the input Long Frame.
 //
 // An error is returned if any of the following are true:
-// The input frame is not a long formatted time series frame.
+// The input frame is not a long formated time series frame.
 // The input frame's Fields are of length 0.
 // The time index is not sorted ascending by time.
 // The time index has null values.
@@ -259,10 +255,6 @@ func LongToWide(longFrame *Frame, fillMissing *FillMissing) (*Frame, error) {
 		return nil, err
 	}
 
-	if wideFrame.Meta == nil {
-		wideFrame.Meta = &FrameMeta{}
-	}
-	wideFrame.Meta.Type = FrameTypeTimeSeriesWide
 	return wideFrame, nil
 }
 
@@ -386,7 +378,7 @@ func timeAt(idx int, longFrame *Frame, tsSchema TimeSeriesSchema) (time.Time, er
 	return val.(time.Time), nil
 }
 
-// WideToLong converts a Wide formatted time series Frame to a Long formatted time series Frame (see TimeSeriesType for descriptions). The first Field of type time.Time or *time.Time in wideFrame will be the time index for the series, and will be the first field of the outputted wideFrame.
+// WideToLong converts a Wide formated time series Frame to a Long formated time series Frame (see TimeSeriesType for descriptions). The first Field of type time.Time or *time.Time in wideFrame will be the time index for the series, and will be the first field of the outputted wideFrame.
 //
 // During conversion: All the unique keys in all of the Labels across the Fields of wideFrame become string
 // Fields with the corresponding name in longFrame. The corresponding Labels values become values in those Fields of longFrame.
@@ -397,7 +389,7 @@ func timeAt(idx int, longFrame *Frame, tsSchema TimeSeriesSchema) (time.Time, er
 // Finally, the Meta field of the result Long Frame is pointing to the reference of the Meta field of the input Wide Frame.
 //
 // An error is returned if any of the following are true:
-// The input frame is not a wide formatted time series frame.
+// The input frame is not a wide formated time series frame.
 // The input row has no rows.
 // The time index not sorted ascending by time.
 // The time index has null values.
@@ -418,7 +410,7 @@ func WideToLong(wideFrame *Frame) (*Frame, error) {
 		return nil, fmt.Errorf("can not convert to long series, input fields have no rows")
 	}
 
-	var uniqueValueNames []string                        // unique names of Fields that are value types
+	uniqueValueNames := []string{}                       // unique names of Fields that are value types
 	uniqueValueNamesToType := make(map[string]FieldType) // unique value Field names to Field type
 	uniqueLabelKeys := make(map[string]struct{})         // unique Label keys, used to build schema
 	labelKeyToWideIndices := make(map[string][]int)      // unique label sets to corresponding Field indices of wideFrame
@@ -448,7 +440,7 @@ func WideToLong(wideFrame *Frame) (*Frame, error) {
 
 	// Sort things for more deterministic output
 	sort.Strings(uniqueValueNames)
-	var sortedUniqueLabelKeys []string
+	sortedUniqueLabelKeys := []string{}
 	for k := range labelKeyToWideIndices {
 		sortedUniqueLabelKeys = append(sortedUniqueLabelKeys, k)
 	}
@@ -484,13 +476,13 @@ func WideToLong(wideFrame *Frame) (*Frame, error) {
 	// Populate data of longFrame from wideframe
 	longFrameCounter := 0
 	for wideRowIdx := 0; wideRowIdx < wideLen; wideRowIdx++ { // loop over each row of wideFrame
-		tm, ok := wideFrame.ConcreteAt(tsSchema.TimeIndex, wideRowIdx)
+		time, ok := wideFrame.ConcreteAt(tsSchema.TimeIndex, wideRowIdx)
 		if !ok {
 			return nil, fmt.Errorf("time may not have nil values")
 		}
 		for _, labelKey := range sortedUniqueLabelKeys {
 			longFrame.Extend(1) // grow each Fields's vector by 1
-			longFrame.Set(0, longFrameCounter, tm)
+			longFrame.Set(0, longFrameCounter, time)
 
 			for i, wideFieldIdx := range labelKeyToWideIndices[labelKey] {
 				wideField := wideFrame.Fields[wideFieldIdx]
@@ -506,11 +498,6 @@ func WideToLong(wideFrame *Frame) (*Frame, error) {
 			longFrameCounter++
 		}
 	}
-
-	if longFrame.Meta == nil {
-		longFrame.SetMeta(&FrameMeta{})
-	}
-	longFrame.Meta.Type = FrameTypeTimeSeriesLong
 	return longFrame, nil
 }
 

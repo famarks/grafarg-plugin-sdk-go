@@ -5,78 +5,32 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/famarks/grafarg-plugin-sdk-go/data"
 )
 
 func TestField(t *testing.T) {
-	t.Run("should create new field with expected values", func(t *testing.T) {
-		f := data.NewField("value", nil, []float64{1.0, 2.0, 3.0})
+	f := data.NewField("value", nil, []float64{1.0, 2.0, 3.0})
 
-		if f.Len() != 3 {
-			t.Fatal("unexpected length")
-		}
-
-		require.Equal(t, 1.0, f.At(0))
-		require.Equal(t, 2.0, f.At(1))
-		require.Equal(t, 3.0, f.At(2))
-	})
-
-	t.Run("field values should not change if source slice is modified", func(t *testing.T) {
-		values := []float64{1.0, 2.0, 3.0}
-		f := data.NewField("value", nil, values)
-		values[1] = 3.0
-		require.Equal(t, 2.0, f.At(1))
-	})
+	if f.Len() != 3 {
+		t.Fatal("unexpected length")
+	}
 }
 
-func TestField_NullableFloat64(t *testing.T) {
-	t.Run("should create new nullable float64 field with expected values", func(t *testing.T) {
-		val := 2.0
-		f := data.NewField("value", nil, []*float64{nil, &val, nil})
+func TestField_Float64(t *testing.T) {
+	field := data.NewField("value", nil, make([]*float64, 3))
 
-		if f.Len() != 3 {
-			t.Fatal("unexpected length")
-		}
+	want := 2.0
+	field.Set(1, &want)
 
-		require.Nil(t, f.At(0))
-		require.Equal(t, &val, f.At(1).(*float64))
-		require.Nil(t, f.At(2))
-	})
+	if field.Len() != 3 {
+		t.Fatal("unexpected length")
+	}
 
-	t.Run("field values should not change if source slice is modified", func(t *testing.T) {
-		val := 2.0
-		values := []*float64{nil, &val, nil}
-		f := data.NewField("value", nil, values)
-		newVal := 4.0
-		values[1] = &newVal
-		require.Equal(t, &val, f.At(1))
-	})
+	got := field.At(1).(*float64)
 
-	t.Run("should set a value", func(t *testing.T) {
-		field := data.NewField("value", nil, make([]*float64, 3))
-
-		want := 2.0
-		field.Set(1, &want)
-
-		if field.Len() != 3 {
-			t.Fatal("unexpected length")
-		}
-
-		got := field.At(1).(*float64)
-
-		if *got != want {
-			t.Errorf("%+v", *got)
-		}
-	})
-}
-
-func TestFieldLen(t *testing.T) {
-	var fp *data.Field
-	var f data.Field
-	require.Equal(t, 0, fp.Len())
-	require.Equal(t, 0, f.Len())
+	if *got != want {
+		t.Errorf("%+v", *got)
+	}
 }
 
 func TestField_String(t *testing.T) {

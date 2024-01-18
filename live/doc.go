@@ -1,2 +1,2 @@
-// Package live provides types for the Grafarg Live server.
+// Package live provides access to the GrafargLive server [ALPHA]
 package live

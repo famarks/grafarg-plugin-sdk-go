@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,14 +12,15 @@ import (
 // CopyFile copies a file from src to dst. If src and dst files exist, and are
 // the same, then return success. Otherise, attempt to create a hard link
 // between the two files. If that fail, copy the file contents from src to dst.
-func CopyFile(src, dst string) error {
+func CopyFile(src, dst string) (err error) {
 	absSrc, err := filepath.Abs(src)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path of source file %q: %w", src, err)
 	}
 	sfi, err := os.Stat(src)
 	if err != nil {
-		return fmt.Errorf("couldn't stat source file %q: %w", absSrc, err)
+		err = fmt.Errorf("couldn't stat source file %q: %w", absSrc, err)
+		return
 	}
 	if !sfi.Mode().IsRegular() {
 		// Cannot copy non-regular files (e.g., directories, symlinks, devices, etc.)
@@ -30,26 +32,27 @@ func CopyFile(src, dst string) error {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("destination directory doesn't exist: %q", dpath)
+		err = fmt.Errorf("destination directory doesn't exist: %q", dpath)
+		return
 	}
 
 	var dfi os.FileInfo
 	dfi, err = os.Stat(dst)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return err
+			return
 		}
 	} else {
 		if !(dfi.Mode().IsRegular()) {
 			return fmt.Errorf("non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
 		}
 		if os.SameFile(sfi, dfi) {
-			return err
+			return
 		}
 	}
 
 	if err = os.Link(src, dst); err == nil {
-		return err
+		return
 	}
 
 	err = copyFileContents(src, dst)
@@ -102,7 +105,7 @@ func CopyRecursive(src, dst string) error {
 		}
 	}
 
-	entries, err := os.ReadDir(src)
+	entries, err := ioutil.ReadDir(src)
 	if err != nil {
 		return err
 	}

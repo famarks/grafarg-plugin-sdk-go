@@ -7,20 +7,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/arrio"
-	"github.com/apache/arrow/go/v13/arrow/ipc"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/arrow"
+	"github.com/apache/arrow/go/arrow/array"
+	"github.com/apache/arrow/go/arrow/arrio"
+	"github.com/apache/arrow/go/arrow/ipc"
+	"github.com/apache/arrow/go/arrow/memory"
 	"github.com/mattetti/filebuffer"
 )
-
-// keys added to arrow field metadata
-const metadataKeyName = "name"     // standard property
-const metadataKeyConfig = "config" // FieldConfig serialized as JSON
-const metadataKeyLabels = "labels" // labels serialized as JSON
-const metadataKeyTSType = "tstype" // typescript type
-const metadataKeyRefID = "refId"   // added to the table metadata
 
 // MarshalArrow converts the Frame to an arrow table and returns a byte
 // representation of that table.
@@ -44,7 +37,7 @@ func (f *Frame) MarshalArrow() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func(cols []arrow.Column) {
+	defer func(cols []array.Column) {
 		for _, col := range cols {
 			col.Release()
 		}
@@ -93,13 +86,11 @@ func buildArrowFields(f *Frame) ([]arrow.Field, error) {
 		if err != nil {
 			return nil, err
 		}
-		tstype, _ := getTypeScriptTypeString(field.Type())
-		fieldMeta := map[string]string{
-			metadataKeyTSType: tstype,
-		}
+
+		fieldMeta := map[string]string{"name": field.Name}
 
 		if field.Labels != nil {
-			if fieldMeta[metadataKeyLabels], err = toJSONString(field.Labels); err != nil {
+			if fieldMeta["labels"], err = toJSONString(field.Labels); err != nil {
 				return nil, err
 			}
 		}
@@ -109,7 +100,7 @@ func buildArrowFields(f *Frame) ([]arrow.Field, error) {
 			if err != nil {
 				return nil, err
 			}
-			fieldMeta[metadataKeyConfig] = str
+			fieldMeta["config"] = str
 		}
 
 		arrowFields[i] = arrow.Field{
@@ -124,10 +115,9 @@ func buildArrowFields(f *Frame) ([]arrow.Field, error) {
 }
 
 // buildArrowColumns builds Arrow columns from a Frame.
-// nolint:gocyclo
-func buildArrowColumns(f *Frame, arrowFields []arrow.Field) ([]arrow.Column, error) {
+func buildArrowColumns(f *Frame, arrowFields []arrow.Field) ([]array.Column, error) {
 	pool := memory.NewGoAllocator()
-	columns := make([]arrow.Column, len(f.Fields))
+	columns := make([]array.Column, len(f.Fields))
 
 	for fieldIdx, field := range f.Fields {
 		switch v := field.vector.(type) {
@@ -196,16 +186,6 @@ func buildArrowColumns(f *Frame, arrowFields []arrow.Field) ([]arrow.Column, err
 		case *nullableTimeTimeVector:
 			columns[fieldIdx] = *buildNullableTimeColumn(pool, arrowFields[fieldIdx], v)
 
-		case *jsonRawMessageVector:
-			columns[fieldIdx] = *buildJSONColumn(pool, arrowFields[fieldIdx], v)
-		case *nullableJsonRawMessageVector:
-			columns[fieldIdx] = *buildNullableJSONColumn(pool, arrowFields[fieldIdx], v)
-
-		case *enumVector:
-			columns[fieldIdx] = *buildEnumColumn(pool, arrowFields[fieldIdx], v)
-		case *nullableEnumVector:
-			columns[fieldIdx] = *buildNullableEnumColumn(pool, arrowFields[fieldIdx], v)
-
 		default:
 			return nil, fmt.Errorf("unsupported field vector type for conversion to arrow: %T", v)
 		}
@@ -216,8 +196,8 @@ func buildArrowColumns(f *Frame, arrowFields []arrow.Field) ([]arrow.Column, err
 // buildArrowSchema builds an Arrow schema for a Frame.
 func buildArrowSchema(f *Frame, fs []arrow.Field) (*arrow.Schema, error) {
 	tableMetaMap := map[string]string{
-		metadataKeyName:  f.Name,
-		metadataKeyRefID: f.RefID,
+		"name":  f.Name,
+		"refId": f.RefID,
 	}
 	if f.Meta != nil {
 		str, err := toJSONString(f.Meta)
@@ -233,7 +213,6 @@ func buildArrowSchema(f *Frame, fs []arrow.Field) (*arrow.Schema, error) {
 
 // fieldToArrow returns the corresponding Arrow primitive type and nullable property to the fields'
 // Vector primitives.
-// nolint:gocyclo
 func fieldToArrow(f *Field) (arrow.DataType, bool, error) {
 	switch f.vector.(type) {
 	case *stringVector:
@@ -268,9 +247,9 @@ func fieldToArrow(f *Field) (arrow.DataType, bool, error) {
 	case *nullableUint8Vector:
 		return &arrow.Uint8Type{}, true, nil
 
-	case *uint16Vector, *enumVector:
+	case *uint16Vector:
 		return &arrow.Uint16Type{}, false, nil
-	case *nullableUint16Vector, *nullableEnumVector:
+	case *nullableUint16Vector:
 		return &arrow.Uint16Type{}, true, nil
 
 	case *uint32Vector:
@@ -299,14 +278,9 @@ func fieldToArrow(f *Field) (arrow.DataType, bool, error) {
 		return &arrow.BooleanType{}, true, nil
 
 	case *timeTimeVector:
-		return &arrow.TimestampType{Unit: arrow.Nanosecond}, false, nil
+		return &arrow.TimestampType{}, false, nil
 	case *nullableTimeTimeVector:
-		return &arrow.TimestampType{Unit: arrow.Nanosecond}, true, nil
-
-	case *jsonRawMessageVector:
-		return &arrow.BinaryType{}, false, nil
-	case *nullableJsonRawMessageVector:
-		return &arrow.BinaryType{}, true, nil
+		return &arrow.TimestampType{}, true, nil
 
 	default:
 		return nil, false, fmt.Errorf("unsupported type for conversion to arrow: %T", f.vector)
@@ -324,34 +298,29 @@ func getMDKey(key string, metaData arrow.Metadata) (string, bool) {
 func initializeFrameFields(schema *arrow.Schema, frame *Frame) ([]bool, error) {
 	nullable := make([]bool, len(schema.Fields()))
 	for idx, field := range schema.Fields() {
-		sdkField := Field{
+		sdkField := &Field{
 			Name: field.Name,
 		}
-		if labelsAsString, ok := getMDKey(metadataKeyLabels, field.Metadata); ok {
+		if labelsAsString, ok := getMDKey("labels", field.Metadata); ok {
 			if err := json.Unmarshal([]byte(labelsAsString), &sdkField.Labels); err != nil {
 				return nil, err
 			}
 		}
-		if configAsString, ok := getMDKey(metadataKeyConfig, field.Metadata); ok {
-			// make sure that Config is not nil, otherwise create a new one
-			if sdkField.Config == nil {
-				sdkField.Config = &FieldConfig{}
-			}
-			if err := json.Unmarshal([]byte(configAsString), sdkField.Config); err != nil {
+		if configAsString, ok := getMDKey("config", field.Metadata); ok {
+			if err := json.Unmarshal([]byte(configAsString), &sdkField.Config); err != nil {
 				return nil, err
 			}
 		}
 		nullable[idx] = field.Nullable
-		if err := initializeFrameField(field, idx, nullable, &sdkField); err != nil {
+		if err := initializeFrameField(field, idx, nullable, sdkField); err != nil {
 			return nil, err
 		}
 
-		frame.Fields = append(frame.Fields, &sdkField)
+		frame.Fields = append(frame.Fields, sdkField)
 	}
 	return nullable, nil
 }
 
-// nolint:gocyclo
 func initializeFrameField(field arrow.Field, idx int, nullable []bool, sdkField *Field) error {
 	switch field.Type.ID() {
 	case arrow.STRING:
@@ -391,15 +360,6 @@ func initializeFrameField(field arrow.Field, idx int, nullable []bool, sdkField 
 		}
 		sdkField.vector = newUint8Vector(0)
 	case arrow.UINT16:
-		tstype, ok := getMDKey(metadataKeyTSType, field.Metadata)
-		if ok && tstype == simpleTypeEnum {
-			if nullable[idx] {
-				sdkField.vector = newNullableEnumVector(0)
-			} else {
-				sdkField.vector = newEnumVector(0)
-			}
-			break
-		}
 		if nullable[idx] {
 			sdkField.vector = newNullableUint16Vector(0)
 			break
@@ -441,26 +401,10 @@ func initializeFrameField(field arrow.Field, idx int, nullable []bool, sdkField 
 			break
 		}
 		sdkField.vector = newTimeTimeVector(0)
-	case arrow.BINARY:
-		if nullable[idx] {
-			sdkField.vector = newNullableJsonRawMessageVector(0)
-			break
-		}
-		sdkField.vector = newJsonRawMessageVector(0)
 	default:
 		return fmt.Errorf("unsupported conversion from arrow to sdk type for arrow type %v", field.Type.ID().String())
 	}
 
-	return nil
-}
-
-func populateFrameFieldsFromRecord(record arrow.Record, nullable []bool, frame *Frame) error {
-	for i := 0; i < len(frame.Fields); i++ {
-		col := record.Column(i)
-		if err := parseColumn(col, i, nullable, frame); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -474,15 +418,18 @@ func populateFrameFields(fR arrio.Reader, nullable []bool, frame *Frame) error {
 			return err
 		}
 
-		if err = populateFrameFieldsFromRecord(record, nullable, frame); err != nil {
-			return err
+		for i := 0; i < len(frame.Fields); i++ {
+			col := record.Column(i)
+			if err := parseColumn(col, i, nullable, frame); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 // nolint:gocyclo
-func parseColumn(col arrow.Array, i int, nullable []bool, frame *Frame) error {
+func parseColumn(col array.Interface, i int, nullable []bool, frame *Frame) error {
 	switch col.DataType().ID() {
 	case arrow.STRING:
 		v := array.NewStringData(col.Data())
@@ -607,31 +554,17 @@ func parseColumn(col arrow.Array, i int, nullable []bool, frame *Frame) error {
 	case arrow.UINT16:
 		v := array.NewUint16Data(col.Data())
 		for rIdx := 0; rIdx < col.Len(); rIdx++ {
-			if frame.Fields[i].Type().NullableType() == FieldTypeNullableEnum {
-				if nullable[i] {
-					if v.IsNull(rIdx) {
-						var ns *EnumItemIndex
-						frame.Fields[i].vector.Append(ns)
-						continue
-					}
-					rv := EnumItemIndex(v.Value(rIdx))
-					frame.Fields[i].vector.Append(&rv)
+			if nullable[i] {
+				if v.IsNull(rIdx) {
+					var ns *uint16
+					frame.Fields[i].vector.Append(ns)
 					continue
 				}
-				frame.Fields[i].vector.Append(EnumItemIndex(v.Value(rIdx)))
-			} else {
-				if nullable[i] {
-					if v.IsNull(rIdx) {
-						var ns *uint16
-						frame.Fields[i].vector.Append(ns)
-						continue
-					}
-					rv := v.Value(rIdx)
-					frame.Fields[i].vector.Append(&rv)
-					continue
-				}
-				frame.Fields[i].vector.Append(v.Value(rIdx))
+				rv := v.Value(rIdx)
+				frame.Fields[i].vector.Append(&rv)
+				continue
 			}
+			frame.Fields[i].vector.Append(v.Value(rIdx))
 		}
 	case arrow.FLOAT32:
 		v := array.NewFloat32Data(col.Data())
@@ -693,59 +626,11 @@ func parseColumn(col arrow.Array, i int, nullable []bool, frame *Frame) error {
 			}
 			frame.Fields[i].vector.Append(t)
 		}
-	case arrow.BINARY:
-		v := array.NewBinaryData(col.Data())
-		for sIdx := 0; sIdx < v.Len(); sIdx++ {
-			if nullable[i] {
-				if v.IsNull(sIdx) {
-					var nb *json.RawMessage
-					frame.Fields[i].vector.Append(nb)
-					continue
-				}
-				r := json.RawMessage(v.Value(sIdx))
-				frame.Fields[i].vector.Append(&r)
-				continue
-			}
-			r := json.RawMessage(v.Value(sIdx))
-			frame.Fields[i].vector.Append(r)
-		}
 	default:
 		return fmt.Errorf("unsupported arrow type %s for conversion", col.DataType().ID())
 	}
 
 	return nil
-}
-
-func populateFrameFromSchema(schema *arrow.Schema, frame *Frame) error {
-	metaData := schema.Metadata()
-	frame.Name, _ = getMDKey(metadataKeyName, metaData) // No need to check ok, zero value ("") is returned
-	frame.RefID, _ = getMDKey(metadataKeyRefID, metaData)
-
-	var err error
-	if metaAsString, ok := getMDKey("meta", metaData); ok {
-		frame.Meta, err = FrameMetaFromJSON(metaAsString)
-	}
-
-	return err
-}
-
-// FromArrowRecord converts a an Arrow record batch into a Frame.
-func FromArrowRecord(record arrow.Record) (*Frame, error) {
-	schema := record.Schema()
-	frame := &Frame{}
-	if err := populateFrameFromSchema(schema, frame); err != nil {
-		return nil, err
-	}
-
-	nullable, err := initializeFrameFields(schema, frame)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = populateFrameFieldsFromRecord(record, nullable, frame); err != nil {
-		return nil, err
-	}
-	return frame, nil
 }
 
 // UnmarshalArrowFrame converts a byte representation of an arrow table to a Frame.
@@ -758,9 +643,17 @@ func UnmarshalArrowFrame(b []byte) (*Frame, error) {
 	defer fR.Close()
 
 	schema := fR.Schema()
+	metaData := schema.Metadata()
 	frame := &Frame{}
-	if err := populateFrameFromSchema(schema, frame); err != nil {
-		return nil, err
+	frame.Name, _ = getMDKey("name", metaData) // No need to check ok, zero value ("") is returned
+	frame.RefID, _ = getMDKey("refId", metaData)
+
+	if metaAsString, ok := getMDKey("meta", metaData); ok {
+		var err error
+		frame.Meta, err = FrameMetaFromJSON(metaAsString)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	nullable, err := initializeFrameFields(schema, frame)
@@ -768,10 +661,10 @@ func UnmarshalArrowFrame(b []byte) (*Frame, error) {
 		return nil, err
 	}
 
-	if err = populateFrameFields(fR, nullable, frame); err != nil {
+	err = populateFrameFields(fR, nullable, frame)
+	if err != nil {
 		return nil, err
 	}
-
 	return frame, nil
 }
 
@@ -808,9 +701,6 @@ func (frames Frames) MarshalArrow() ([][]byte, error) {
 	bs := make([][]byte, len(frames))
 	var err error
 	for i, frame := range frames {
-		if frame == nil {
-			return nil, errors.New("frame can not be nil")
-		}
 		bs[i], err = frame.MarshalArrow()
 		if err != nil {
 			return nil, err

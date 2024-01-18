@@ -1,7 +1,6 @@
 package instancemgmt
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -12,7 +11,6 @@ import (
 )
 
 func TestInstanceManager(t *testing.T) {
-	ctx := context.Background()
 	pCtx := backend.PluginContext{
 		OrgID: 1,
 		AppInstanceSettings: &backend.AppInstanceSettings{
@@ -24,14 +22,14 @@ func TestInstanceManager(t *testing.T) {
 	im := New(tip)
 
 	t.Run("When getting instance should create a new instance", func(t *testing.T) {
-		instance, err := im.Get(ctx, pCtx)
+		instance, err := im.Get(pCtx)
 		require.NoError(t, err)
 		require.NotNil(t, instance)
 		require.Equal(t, pCtx.OrgID, instance.(*testInstance).orgID)
 		require.Equal(t, pCtx.AppInstanceSettings.Updated, instance.(*testInstance).updated)
 
 		t.Run("When getting instance should return same instance", func(t *testing.T) {
-			instance2, err := im.Get(ctx, pCtx)
+			instance2, err := im.Get(pCtx)
 			require.NoError(t, err)
 			require.Same(t, instance, instance2)
 		})
@@ -43,12 +41,7 @@ func TestInstanceManager(t *testing.T) {
 					Updated: time.Now(),
 				},
 			}
-			origDisposeTTL := disposeTTL
-			disposeTTL = time.Millisecond
-			t.Cleanup(func() {
-				disposeTTL = origDisposeTTL
-			})
-			newInstance, err := im.Get(ctx, pCtxUpdated)
+			newInstance, err := im.Get(pCtxUpdated)
 
 			t.Run("New instance should be created", func(t *testing.T) {
 				require.NoError(t, err)
@@ -62,9 +55,7 @@ func TestInstanceManager(t *testing.T) {
 			})
 
 			t.Run("Old instance should be disposed", func(t *testing.T) {
-				instance.(*testInstance).wg.Wait()
-				require.True(t, instance.(*testInstance).disposed.Load())
-				require.Equal(t, int64(1), instance.(*testInstance).disposedTimes.Load())
+				require.True(t, instance.(*testInstance).disposed)
 			})
 		})
 	})
@@ -72,10 +63,9 @@ func TestInstanceManager(t *testing.T) {
 
 func TestInstanceManagerConcurrency(t *testing.T) {
 	t.Run("Check possible race condition issues when initially creating instance", func(t *testing.T) {
-		ctx := context.Background()
 		tip := &testInstanceProvider{}
 		im := New(tip)
-		pCtx := backend.PluginContext{
+		ctx := backend.PluginContext{
 			OrgID: 1,
 			AppInstanceSettings: &backend.AppInstanceSettings{
 				Updated: time.Now(),
@@ -89,7 +79,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		// Creating new instances because of updated context
 		for i := 0; i < 10; i++ {
 			go func() {
-				instance, _ := im.Get(ctx, pCtx)
+				instance, _ := im.Get(ctx)
 				mutex.Lock()
 				defer mutex.Unlock()
 				// Collect all instances created
@@ -100,9 +90,9 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		wg.Wait()
 
 		t.Run("All created instances should be either disposed or exist in cache for later disposing", func(t *testing.T) {
-			cachedInstance, _ := im.Get(ctx, pCtx)
+			cachedInstance, _ := im.Get(ctx)
 			for _, instance := range createdInstances {
-				if cachedInstance.(*testInstance) != instance && instance.disposedTimes.Load() < 1 {
+				if cachedInstance.(*testInstance) != instance && instance.disposedTimes < 1 {
 					require.FailNow(t, "Found lost reference to un-disposed instance")
 				}
 			}
@@ -110,14 +100,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 	})
 
 	t.Run("Check possible race condition issues when re-creating instance on settings update", func(t *testing.T) {
-		origDisposeTTL := disposeTTL
-		disposeTTL = time.Millisecond
-		t.Cleanup(func() {
-			disposeTTL = origDisposeTTL
-		})
-
-		ctx := context.Background()
-		initialPCtx := backend.PluginContext{
+		initialCtx := backend.PluginContext{
 			OrgID: 1,
 			AppInstanceSettings: &backend.AppInstanceSettings{
 				Updated: time.Now(),
@@ -126,9 +109,9 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		tip := &testInstanceProvider{}
 		im := New(tip)
 		// Creating initial instance with old contexts
-		instanceToDispose, _ := im.Get(ctx, initialPCtx)
+		instanceToDispose, _ := im.Get(initialCtx)
 
-		updatedPCtx := backend.PluginContext{
+		updatedCtx := backend.PluginContext{
 			OrgID: 1,
 			AppInstanceSettings: &backend.AppInstanceSettings{
 				Updated: time.Now(),
@@ -143,7 +126,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		// Creating new instances because of updated context
 		for i := 0; i < 10; i++ {
 			go func() {
-				instance, _ := im.Get(ctx, updatedPCtx)
+				instance, _ := im.Get(updatedCtx)
 				mutex.Lock()
 				defer mutex.Unlock()
 				// Collect all instances created during concurrent update
@@ -154,13 +137,12 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		wg.Wait()
 
 		t.Run("Initial instance should be disposed only once", func(t *testing.T) {
-			instanceToDispose.(*testInstance).wg.Wait()
-			require.Equal(t, int64(1), instanceToDispose.(*testInstance).disposedTimes.Load(), "Instance should be disposed only once")
+			require.Equal(t, int64(1), instanceToDispose.(*testInstance).disposedTimes, "Instance should be disposed only once")
 		})
 		t.Run("All created instances should be either disposed or exist in cache for later disposing", func(t *testing.T) {
-			cachedInstance, _ := im.Get(ctx, updatedPCtx)
+			cachedInstance, _ := im.Get(updatedCtx)
 			for _, instance := range createdInstances {
-				if cachedInstance.(*testInstance) != instance && instance.disposedTimes.Load() < 1 {
+				if cachedInstance.(*testInstance) != instance && instance.disposedTimes < 1 {
 					require.FailNow(t, "Found lost reference to un-disposed instance")
 				}
 			}
@@ -169,8 +151,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 
 	t.Run("Long recreation of instance should not affect datasources with different ID", func(t *testing.T) {
 		const delay = time.Millisecond * 50
-		ctx := context.Background()
-		pCtx := backend.PluginContext{
+		ctx := backend.PluginContext{
 			OrgID: 1,
 			AppInstanceSettings: &backend.AppInstanceSettings{
 				Updated: time.Now(),
@@ -183,7 +164,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		tip := &testInstanceProvider{delay: delay}
 		im := New(tip)
 		// Creating instance with id#1 in cache
-		_, err := im.Get(ctx, pCtx)
+		_, err := im.Get(ctx)
 		require.NoError(t, err)
 		var wg1, wg2 sync.WaitGroup
 		wg1.Add(1)
@@ -191,7 +172,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		go func() {
 			// Creating instance with id#2 in cache
 			wg1.Done()
-			_, err := im.Get(ctx, backend.PluginContext{
+			_, err := im.Get(backend.PluginContext{
 				OrgID: 2,
 				AppInstanceSettings: &backend.AppInstanceSettings{
 					Updated: time.Now(),
@@ -204,7 +185,7 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 		wg1.Wait()
 		// Getting existing instance with id#1 from cache
 		start := time.Now()
-		_, err = im.Get(ctx, pCtx)
+		_, err = im.Get(ctx)
 		elapsed := time.Since(start)
 		require.NoError(t, err)
 		// Waiting before thread 2 finished to get the instance
@@ -218,41 +199,35 @@ func TestInstanceManagerConcurrency(t *testing.T) {
 type testInstance struct {
 	orgID         int64
 	updated       time.Time
-	disposed      atomic.Bool
-	disposedTimes atomic.Int64
-	wg            sync.WaitGroup
+	disposed      bool
+	disposedTimes int64
 }
 
 func (ti *testInstance) Dispose() {
-	ti.disposed.Store(true)
-	ti.disposedTimes.Add(1)
-	ti.wg.Done()
+	ti.disposed = true
+	atomic.AddInt64(&ti.disposedTimes, 1)
 }
 
 type testInstanceProvider struct {
 	delay time.Duration
 }
 
-func (tip *testInstanceProvider) GetKey(_ context.Context, pluginContext backend.PluginContext) (interface{}, error) {
+func (tip *testInstanceProvider) GetKey(pluginContext backend.PluginContext) (interface{}, error) {
 	return pluginContext.OrgID, nil
 }
 
-func (tip *testInstanceProvider) NeedsUpdate(_ context.Context, pluginContext backend.PluginContext, cachedInstance CachedInstance) bool {
+func (tip *testInstanceProvider) NeedsUpdate(pluginContext backend.PluginContext, cachedInstance CachedInstance) bool {
 	curUpdated := pluginContext.AppInstanceSettings.Updated
 	cachedUpdated := cachedInstance.PluginContext.AppInstanceSettings.Updated
 	return !curUpdated.Equal(cachedUpdated)
 }
 
-func (tip *testInstanceProvider) NewInstance(_ context.Context, pluginContext backend.PluginContext) (Instance, error) {
+func (tip *testInstanceProvider) NewInstance(pluginContext backend.PluginContext) (Instance, error) {
 	if tip.delay > 0 {
 		time.Sleep(tip.delay)
 	}
-
-	ti := &testInstance{
+	return &testInstance{
 		orgID:   pluginContext.OrgID,
 		updated: pluginContext.AppInstanceSettings.Updated,
-	}
-	ti.wg.Add(1)
-
-	return ti, nil
+	}, nil
 }
